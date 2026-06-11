@@ -8,29 +8,6 @@ The platform combines data engineering, natural language processing, AI-powered 
 
 ---
 
-## Quickstart (current build)
-
-**Stack:** Python analysis core (`src/`) → FastAPI JSON API (`api/`) → React + TypeScript + Vite frontend (`frontend/`), with an interactive react-globe.gl 3D globe. Data source is the safe WildChat sample pack in `data/wildchat_country_csv_pack/` (no database required).
-
-```bash
-# 1. Backend (Python 3.11+)
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn api.main:app --reload --port 8000      # API at http://localhost:8000/api/summary
-
-# 2. Frontend (Node 18+), in a second terminal
-cd frontend
-npm install
-npm run dev                                     # app at http://localhost:5173 (proxies /api)
-
-# 3. Tests + findings report
-pytest -q
-python -m src.build_findings                    # regenerates docs/findings.md
-```
-
-> Status: the **Interactive Globe** and **Global Overview / Country Analysis** pages are wired to live data. Topic Explorer, Language Analysis, Sentiment, Wow-Factor, and Ask-the-Dataset have working API endpoints with UI to follow. Sections below describe the full target design; the PostgreSQL schema in `sql/` is the documented scale path for the full Hugging Face export.
-
----
 
 ## 1. Core Research Questions
 
@@ -167,7 +144,7 @@ Potential providers:
 
 This enables consistent topic classification across all languages.
 
-Recommended workflow:
+Workflow:
 
 ```text
 Original conversation
@@ -246,7 +223,7 @@ Classify conversations into categories such as:
 
 Store classifications for dashboard filtering.
 
-Recommended fields:
+Fields:
 
 ```text
 topic_category
@@ -307,7 +284,7 @@ Sentiment labels:
 - Neutral
 - Negative
 
-Recommended fields:
+Fields:
 
 ```text
 sentiment_label
@@ -563,7 +540,7 @@ Recommended Python libraries:
 
 ## 11. PostgreSQL Schema Overview
 
-Suggested tables:
+Tables:
 
 ```text
 countries
