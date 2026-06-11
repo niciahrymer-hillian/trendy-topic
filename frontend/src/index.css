@@ -1,0 +1,119 @@
+:root {
+  --bg: #0f1419;
+  --panel: #1a2230;
+  --panel-2: #222c3c;
+  --text: #e6edf3;
+  --muted: #93a1b1;
+  --accent: #4aa8ff;
+  --accent-2: #7c5cff;
+  --border: #2b3648;
+  --ok: #3fb950;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.app { display: flex; min-height: 100vh; }
+
+/* Sidebar */
+.sidebar {
+  width: 260px;
+  flex-shrink: 0;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  padding: 20px 16px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+.brand { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+.brand-dot {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, var(--accent), var(--accent-2));
+}
+.brand-title { font-weight: 700; font-size: 16px; }
+.brand-sub { font-size: 11px; color: var(--muted); }
+
+.nav { display: flex; flex-direction: column; gap: 4px; }
+.nav-link {
+  color: var(--muted);
+  text-decoration: none;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+.nav-link:hover { background: var(--panel-2); color: var(--text); }
+.nav-link.active { background: var(--accent); color: #04121f; font-weight: 600; }
+
+.jump { margin-top: 24px; border-top: 1px solid var(--border); padding-top: 16px; }
+.jump-title { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 8px; }
+.jump-list { display: flex; flex-direction: column; gap: 2px; }
+.jump-item {
+  text-align: left;
+  background: none;
+  border: none;
+  color: var(--muted);
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.jump-item:hover { background: var(--panel-2); color: var(--text); }
+.jump-item.active { color: var(--accent); font-weight: 600; }
+
+/* Content */
+.content { flex: 1; padding: 28px 36px; max-width: 1200px; }
+.page-header { margin-bottom: 20px; }
+.page-header h1 { margin: 0 0 4px; font-size: 26px; }
+.page-header p { margin: 0; color: var(--muted); }
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+.card h2 { margin: 0 0 14px; font-size: 16px; }
+
+.metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 14px; margin-bottom: 20px; }
+.metric { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+.metric-value { font-size: 24px; font-weight: 700; color: var(--accent); }
+.metric-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+@media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } .sidebar { width: 210px; } }
+
+.state { padding: 40px; text-align: center; color: var(--muted); }
+.state.error { color: #ff7b72; }
+.hint { margin-top: 8px; font-size: 13px; color: var(--muted); }
+code { background: var(--panel-2); padding: 2px 6px; border-radius: 4px; }
+
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+th { color: var(--muted); font-weight: 600; }
+
+.controls { display: flex; gap: 10px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+select, input[type="text"] {
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 14px;
+}
+button.primary {
+  background: var(--accent); color: #04121f; border: none;
+  padding: 9px 16px; border-radius: 8px; font-weight: 600; cursor: pointer;
+}
+.pill { display: inline-block; background: var(--panel-2); border: 1px solid var(--border); border-radius: 999px; padding: 2px 10px; font-size: 12px; color: var(--muted); }
+.globe-wrap { display: flex; justify-content: center; background: #060a10; border-radius: 12px; border: 1px solid var(--border); }
+.answer { background: var(--panel-2); border-left: 3px solid var(--accent); padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; }

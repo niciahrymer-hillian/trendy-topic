@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+.env.*
+
+# Data files - keep large datasets out of GitHub
+data/raw/*
+data/processed/*
+data/exports/*
+*.parquet
+*.jsonl
+*.ndjson
+*.sqlite
+*.db
+
+# Allow placeholder files
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/exports/.gitkeep
+
+# Tracked on purpose: small, safe WildChat sample pack the dashboard reads by default.
+# (Not under data/raw|processed|exports, so it is committed. The full multi-GB
+# Hugging Face export should go in data/raw/ and stay ignored.)
+!data/wildchat_country_csv_pack/
+
+# Audio outputs
+assets/audio/*
+!assets/audio/.gitkeep
+
+# Streamlit
+.streamlit/secrets.toml
+
+# OS/editor
+.DS_Store
+.vscode/
+.idea/
+.claude/

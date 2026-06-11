@@ -1,0 +1,27 @@
+# --- Core analysis layer ---
+pandas
+vaderSentiment
+langdetect
+python-dotenv
+pyarrow
+
+# --- API (React frontend consumes this) ---
+fastapi
+uvicorn[standard]
+httpx          # used by FastAPI's TestClient in tests
+
+# --- Data sourcing (full Hugging Face export, scale path) ---
+datasets
+huggingface_hub
+requests
+
+# --- PostgreSQL scale path (schema in sql/) ---
+sqlalchemy
+psycopg[binary]
+
+# --- Optional / future features ---
+elevenlabs     # voice briefings
+scikit-learn   # stretch: clustering / similarity
+
+# --- Testing ---
+pytest

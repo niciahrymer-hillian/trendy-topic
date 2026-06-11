@@ -1,0 +1,9 @@
+file_name,country,country_filter_value_for_real_export,iso2,rows_in_sample_file,source_dataset,data_status,source_url
+wildchat_usa.csv,United States,United States,US,60,allenai/WildChat-4.8M,starter_sample_not_full_huggingface_export,https://huggingface.co/datasets/allenai/WildChat-4.8M
+wildchat_canada.csv,Canada,Canada,CA,60,allenai/WildChat-4.8M,starter_sample_not_full_huggingface_export,https://huggingface.co/datasets/allenai/WildChat-4.8M
+wildchat_great_britain.csv,Great Britain / United Kingdom,United Kingdom,GB,60,allenai/WildChat-4.8M,starter_sample_not_full_huggingface_export,https://huggingface.co/datasets/allenai/WildChat-4.8M
+wildchat_china.csv,China,China,CN,60,allenai/WildChat-4.8M,starter_sample_not_full_huggingface_export,https://huggingface.co/datasets/allenai/WildChat-4.8M
+wildchat_russia.csv,Russia,Russia,RU,60,allenai/WildChat-4.8M,starter_sample_not_full_huggingface_export,https://huggingface.co/datasets/allenai/WildChat-4.8M
+wildchat_france.csv,France,France,FR,60,allenai/WildChat-4.8M,starter_sample_not_full_huggingface_export,https://huggingface.co/datasets/allenai/WildChat-4.8M
+wildchat_brazil.csv,Brazil,Brazil,BR,60,allenai/WildChat-4.8M,starter_sample_not_full_huggingface_export,https://huggingface.co/datasets/allenai/WildChat-4.8M
+wildchat_japan.csv,Japan,Japan,JP,60,allenai/WildChat-4.8M,starter_sample_not_full_huggingface_export,https://huggingface.co/datasets/allenai/WildChat-4.8M
