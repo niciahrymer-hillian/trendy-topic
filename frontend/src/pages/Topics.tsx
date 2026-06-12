@@ -1,10 +1,76 @@
-import Placeholder from "./Placeholder";
+// Topic Explorer — pick a topic, see where it shows up and how it trends; plus an
+// all-topics-over-time comparison. Sidebar "Jump to" lists every topic.
+
+import { useEffect, useState } from "react";
+import { api } from "../api";
+import { useFetch } from "../useFetch";
+import { useJump } from "../jump";
+import { ErrorState, Loading, Metrics, PageHeader, Section } from "../components/Ui";
+import EChart from "../components/EChart";
+import { hBarOption, multiLineOption } from "../charts";
 
 export default function Topics() {
+  const list = useFetch(() => api.topics("label"), []);
+  const trends = useFetch(() => api.trends(), []);
+  const [topic, setTopic] = useState<string>("");
+  const { set } = useJump();
+
+  useEffect(() => {
+    if (list.data && !topic) setTopic(list.data[0].topic_label!);
+  }, [list.data, topic]);
+
+  useEffect(() => {
+    if (!list.data) return;
+    set("Topics", list.data.map((t) => ({
+      label: t.topic_label!,
+      active: t.topic_label === topic,
+      onClick: () => setTopic(t.topic_label!),
+    })));
+  }, [list.data, topic, set]);
+
+  const detail = useFetch(() => (topic ? api.topic(topic) : Promise.resolve(null)), [topic]);
+
+  if (list.loading || trends.loading) return <Loading />;
+  if (list.error || !list.data) return <ErrorState message={list.error ?? "no data"} />;
+
   return (
-    <Placeholder
-      title="Topic Explorer"
-      note="Will let you pick a topic and see its country distribution and month-over-month trend, served by /api/topic/{label} and /api/trends."
-    />
+    <div>
+      <PageHeader title="Topic Explorer" subtitle="Where a topic is discussed and how it trends over time." />
+      <div className="controls">
+        <label>Topic</label>
+        <select value={topic} onChange={(e) => setTopic(e.target.value)}>
+          {list.data.map((t) => <option key={t.topic_label} value={t.topic_label}>{t.topic_label}</option>)}
+        </select>
+      </div>
+
+      {detail.data && (
+        <>
+          <Metrics items={[
+            { label: "Conversations", value: detail.data.by_country.reduce((a, c) => a + c.conversations, 0) },
+            { label: "Countries", value: detail.data.by_country.length },
+          ]} />
+          <div className="grid-2">
+            <Section title={`“${topic}” by country`}>
+              <EChart option={hBarOption(detail.data.by_country as unknown as Record<string, string | number>[], "country", "conversations", "#7c5cff")} />
+            </Section>
+            <Section title={`“${topic}” over time`}>
+              <EChart option={{
+                tooltip: { trigger: "axis" },
+                grid: { top: 20, left: 44, right: 20, bottom: 40 },
+                xAxis: { type: "category", data: detail.data.trend.map((p) => p.month) },
+                yAxis: { type: "value" },
+                series: [{ type: "line", smooth: true, areaStyle: {}, data: detail.data.trend.map((p) => p.conversations), itemStyle: { color: "#4aa8ff" } }],
+              }} />
+            </Section>
+          </div>
+        </>
+      )}
+
+      {trends.data && (
+        <Section title="All topics over time">
+          <EChart option={multiLineOption(trends.data as unknown as Record<string, string | number>[], "month", "topic_label", "conversations")} height={420} />
+        </Section>
+      )}
+    </div>
   );
 }

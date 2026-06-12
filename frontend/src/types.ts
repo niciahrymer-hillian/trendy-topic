@@ -82,6 +82,12 @@ export interface HeatmapCell {
   conversations: number;
 }
 
+export interface LanguageTopicCell {
+  language: string;
+  topic_label: string;
+  conversations: number;
+}
+
 export interface AskResponse {
   answer: string;
   table: Record<string, string | number>[];

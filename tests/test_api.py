@@ -45,3 +45,9 @@ def test_ask_endpoint_answers_country_question():
     body = client.get("/api/ask", params={"q": "top topics in Japan"}).json()
     assert "Japan" in body["answer"]
     assert isinstance(body["table"], list) and body["table"]
+
+
+def test_language_topics_endpoint_shape():
+    body = client.get("/api/language-topics").json()
+    assert isinstance(body, list) and body
+    assert {"language", "topic_label", "conversations"} <= body[0].keys()

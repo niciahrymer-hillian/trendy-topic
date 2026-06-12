@@ -121,6 +121,13 @@ def heatmap() -> list[dict]:
     return _records(an.topic_by_country(_df()))
 
 
+@app.get("/api/language-topics")
+def language_topics() -> list[dict]:
+    """Topic counts per language (for the Language Analysis heatmap)."""
+    out = _df().groupby(["language", "topic_label"]).size().reset_index(name="conversations")
+    return _records(out)
+
+
 @app.get("/api/ask")
 def ask(q: str = "") -> dict:
     answer, table = ask_mod.answer_question(_df(), q)

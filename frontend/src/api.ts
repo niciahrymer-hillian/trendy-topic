@@ -8,6 +8,7 @@ import type {
   CuriosityItem,
   HeatmapCell,
   LanguageCount,
+  LanguageTopicCell,
   SentimentCount,
   Summary,
   TopicCount,
@@ -34,5 +35,6 @@ export const api = {
   curiosity: (n = 15) => get<CuriosityItem[]>(`/api/curiosity?n=${n}`),
   trends: () => get<TrendPoint[]>("/api/trends"),
   heatmap: () => get<HeatmapCell[]>("/api/heatmap"),
+  languageTopics: () => get<LanguageTopicCell[]>("/api/language-topics"),
   ask: (q: string) => get<AskResponse>(`/api/ask?q=${encodeURIComponent(q)}`),
 };
