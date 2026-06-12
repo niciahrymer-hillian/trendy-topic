@@ -2,6 +2,7 @@
 
 import { NavLink } from "react-router-dom";
 import { useJump } from "../jump";
+import { useTheme } from "../theme";
 
 const NAV = [
   { to: "/", label: "Global Overview", end: true },
@@ -17,6 +18,7 @@ const NAV = [
 
 export default function Sidebar() {
   const { title, items } = useJump();
+  const { theme, isDark, toggleTheme } = useTheme();
   return (
     <aside className="sidebar">
       <div className="brand">
@@ -39,6 +41,17 @@ export default function Sidebar() {
           </NavLink>
         ))}
       </nav>
+
+      <button className="theme-toggle" onClick={toggleTheme} aria-label="Toggle light and dark mode">
+        <span className="theme-toggle-icons" aria-hidden="true">
+          <span className={`theme-icon theme-icon-sun${theme === "light" ? " active" : ""}`} />
+          <span className={`theme-icon theme-icon-moon${theme === "dark" ? " active" : ""}`} />
+        </span>
+        <span className="theme-toggle-copy">
+          <strong>{isDark ? "Dark mode" : "Light mode"}</strong>
+          <span>{isDark ? "Switch to light" : "Switch to dark"}</span>
+        </span>
+      </button>
 
       {items.length > 0 && (
         <div className="jump">

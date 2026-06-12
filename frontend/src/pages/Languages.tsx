@@ -8,13 +8,14 @@ import { useFetch } from "../useFetch";
 import { useJump, scrollToId } from "../jump";
 import { ErrorState, Loading, PageHeader, Section, Table } from "../components/Ui";
 import EChart from "../components/EChart";
-import { heatmapOption } from "../charts";
+import { heatmapOption, useChartTheme } from "../charts";
 
 export default function Languages() {
   const langs = useFetch(() => api.languages(), []);
   const topicsByLang = useFetch(() => api.languageTopics(), []);
   const sentiment = useFetch(() => api.sentiment("language"), []);
   const { set } = useJump();
+  const chartTheme = useChartTheme();
 
   useEffect(() => {
     set("On this page", [
@@ -30,7 +31,7 @@ export default function Languages() {
 
   const donut: EChartsOption = {
     tooltip: { trigger: "item" },
-    legend: { textStyle: { color: "#93a1b1" } },
+    color: chartTheme.sentiment,
     series: [{
       type: "pie", radius: ["45%", "70%"],
       data: langs.data.map((l) => ({ name: l.language, value: l.conversations })),
@@ -41,7 +42,7 @@ export default function Languages() {
   const sentLabels = [...new Set(sentiment.data.map((s) => s.sentiment_label))];
   const sentStacked: EChartsOption = {
     tooltip: { trigger: "axis", axisPointer: { type: "shadow" } },
-    legend: { textStyle: { color: "#93a1b1" } },
+    color: chartTheme.sentiment,
     grid: { top: 40, left: 40, right: 20, bottom: 40 },
     xAxis: { type: "category", data: langNames },
     yAxis: { type: "value" },
@@ -61,7 +62,7 @@ export default function Languages() {
         <Table columns={["language", "conversations", "share_pct"]} rows={langs.data as unknown as Record<string, string | number>[]} />
       </Section>
       <Section id="heat" title="Topics by language">
-        <EChart option={heatmapOption(topicsByLang.data as unknown as Record<string, string | number>[], "language", "topic_label", "conversations")} height={460} />
+        <EChart option={heatmapOption(topicsByLang.data as unknown as Record<string, string | number>[], "language", "topic_label", "conversations", chartTheme)} height={460} />
       </Section>
       <Section id="sent" title="Sentiment by language">
         <EChart option={sentStacked} />

@@ -7,6 +7,7 @@ import { useFetch } from "../useFetch";
 import { useJump } from "../jump";
 import { ErrorState, Loading, PageHeader, Section } from "../components/Ui";
 import EChart from "../components/EChart";
+import { useChartTheme } from "../charts";
 
 type Dim = "country" | "topic_label" | "language";
 const DIMS: { key: Dim; label: string }[] = [
@@ -20,6 +21,7 @@ export default function Sentiment() {
   const [dim, setDim] = useState<Dim>("country");
   const breakdown = useFetch(() => api.sentiment(dim), [dim]);
   const { set } = useJump();
+  const chartTheme = useChartTheme();
 
   useEffect(() => {
     set("Break down by", DIMS.map((d) => ({
@@ -32,7 +34,7 @@ export default function Sentiment() {
 
   const pie: EChartsOption = {
     tooltip: { trigger: "item" },
-    legend: { textStyle: { color: "#93a1b1" } },
+    color: chartTheme.sentiment,
     series: [{ type: "pie", radius: ["45%", "70%"], data: overall.data.map((s) => ({ name: s.sentiment_label, value: s.conversations })) }],
   };
 
@@ -42,7 +44,7 @@ export default function Sentiment() {
     const labels = [...new Set(breakdown.data.map((s) => s.sentiment_label))];
     stacked = {
       tooltip: { trigger: "axis", axisPointer: { type: "shadow" } },
-      legend: { textStyle: { color: "#93a1b1" } },
+      color: chartTheme.sentiment,
       grid: { top: 40, left: 40, right: 20, bottom: 90 },
       xAxis: { type: "category", data: groups, axisLabel: { rotate: 30 } },
       yAxis: { type: "value" },

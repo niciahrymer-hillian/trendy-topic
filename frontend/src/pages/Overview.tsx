@@ -7,12 +7,14 @@ import { useFetch } from "../useFetch";
 import { useJump, scrollToId } from "../jump";
 import { ErrorState, Loading, Metrics, PageHeader, Section } from "../components/Ui";
 import EChart from "../components/EChart";
+import { useChartTheme } from "../charts";
 
 export default function Overview() {
   const summary = useFetch(() => api.summary(), []);
   const topics = useFetch(() => api.topics("label"), []);
   const cats = useFetch(() => api.topics("category"), []);
   const { set } = useJump();
+  const chartTheme = useChartTheme();
 
   useEffect(() => {
     set("On this page", [
@@ -31,7 +33,7 @@ export default function Overview() {
     grid: { left: 150, right: 20, top: 10, bottom: 30 },
     xAxis: { type: "value" },
     yAxis: { type: "category", data: topics.data.map((t) => t.topic_label!).reverse() },
-    series: [{ type: "bar", data: topics.data.map((t) => t.conversations).reverse(), itemStyle: { color: "#4aa8ff" } }],
+    series: [{ type: "bar", data: topics.data.map((t) => t.conversations).reverse(), itemStyle: { color: chartTheme.accent } }],
   };
 
   const catTree: EChartsOption = {
