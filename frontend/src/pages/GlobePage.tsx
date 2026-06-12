@@ -45,12 +45,18 @@ export default function GlobePage() {
   const globeRef = useRef<GlobeMethods | undefined>(undefined);
   const wrapRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(800);
+  const [height, setHeight] = useState(540);
   const [selected, setSelected] = useState<CountryProfile | null>(null);
+  const [hovered, setHovered] = useState<CountryProfile | null>(null);
   const { set } = useJump();
 
   // Size the globe to its container.
   useEffect(() => {
-    const measure = () => setWidth(wrapRef.current?.clientWidth ?? 800);
+    const measure = () => {
+      const nextWidth = wrapRef.current?.clientWidth ?? 800;
+      setWidth(nextWidth);
+      setHeight(nextWidth < 760 ? 430 : 540);
+    };
     measure();
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
@@ -87,6 +93,8 @@ export default function GlobePage() {
   if (loading) return <Loading />;
   if (error || !data) return <ErrorState message={error ?? "no data"} />;
 
+  const ringTargets: CountryProfile[] = selected ? [selected] : hovered ? [hovered] : [];
+
   return (
     <div>
       <PageHeader
@@ -95,10 +103,12 @@ export default function GlobePage() {
       />
 
       <div className="globe-wrap" ref={wrapRef}>
+        <div className="globe-hint">Drag to spin • Scroll to zoom • Click a point to focus</div>
         <Globe
           ref={globeRef}
           width={width}
-          height={500}
+          height={height}
+          rendererConfig={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
           backgroundColor="rgba(0,0,0,0)"
           globeImageUrl={
             isDark
@@ -107,15 +117,25 @@ export default function GlobePage() {
           }
           bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
           atmosphereColor={isDark ? "#5db7ff" : "#1f7bff"}
-          atmosphereAltitude={0.19}
+          atmosphereAltitude={0.24}
+          showGraticules
           pointsData={data}
           pointLat={(d) => (d as CountryProfile).lat}
           pointLng={(d) => (d as CountryProfile).lng}
-          pointAltitude={0.22}
-          pointRadius={0.9}
+          pointAltitude={0.24}
+          pointRadius={1.05}
+          pointResolution={18}
           pointColor={(d) => SENTIMENT_COLOR[(d as CountryProfile).dominant_sentiment] ?? "#4aa8ff"}
           pointLabel={(d) => tooltip(d as CountryProfile, isDark)}
+          onPointHover={(d) => setHovered((d as CountryProfile) ?? null)}
           onPointClick={(d) => flyTo(d as CountryProfile)}
+          ringsData={ringTargets}
+          ringLat={(d) => (d as CountryProfile).lat}
+          ringLng={(d) => (d as CountryProfile).lng}
+          ringColor={() => [chartTheme.accent, "rgba(0,0,0,0)"]}
+          ringMaxRadius={7}
+          ringPropagationSpeed={2.4}
+          ringRepeatPeriod={850}
         />
       </div>
 
