@@ -202,6 +202,23 @@ class TestApplyMissingRules:
         result = apply_missing_rules(df)
         assert "country_missing" in result.columns
 
+    def test_bad_missing_inputs_are_normalized_and_flagged(self):
+        df = pd.DataFrame([{
+            "country": "",
+            "language": "",
+            "timestamp_utc": "",
+            "model_family": "",
+            "sample_user_prompt_cleaned": "",
+            "safe_for_dashboard": True,
+        }])
+        result = apply_missing_rules(df)
+        assert result["country_missing"].iloc[0] == True
+        assert result["language"].iloc[0] == "unknown"
+        assert result["timestamp_missing"].iloc[0] == True
+        assert result["model_family"].iloc[0] == "unknown"
+        assert result["prompt_unusable"].iloc[0] == True
+        assert result["safe_for_dashboard"].iloc[0] == False
+
 
 # =============================================================================
 # mask_pii_columns
@@ -256,6 +273,23 @@ class TestClean:
         original_country = df["country"].iloc[0]
         clean(df)
         assert df["country"].iloc[0] == original_country
+
+    def test_clean_redacts_pii_in_prompt_and_summary_for_bad_input(self):
+        df = pd.DataFrame([{
+            "country": "United States",
+            "language": "English",
+            "timestamp_utc": "2024-01-01T00:00:00Z",
+            "model_family": "gpt-4o",
+            "sample_user_prompt_cleaned": "Email me at alice@example.com",
+            "assistant_response_summary": "Call me at 555-222-1111",
+            "safe_for_dashboard": True,
+        }])
+
+        result = clean(df)
+        assert "alice@example.com" not in result["sample_user_prompt_cleaned"].iloc[0]
+        assert "555-222-1111" not in result["assistant_response_summary"].iloc[0]
+        assert R in result["sample_user_prompt_cleaned"].iloc[0]
+        assert R in result["assistant_response_summary"].iloc[0]
 
 
 # =============================================================================

@@ -2,8 +2,16 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+import sys
+
 import pandas as pd
 import pytest
+
+# Allow running this test file directly via `python tests/test_geo_and_language.py`.
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from src import language_detector as ld
 from src import geo

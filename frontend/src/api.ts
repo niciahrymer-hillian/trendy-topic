@@ -12,7 +12,9 @@ import type {
   HeatmapCell,
   LanguageCount,
   LanguageTopicCell,
+  CountryClustersResponse,
   SentimentCount,
+  SimilarSummaryResponse,
   Summary,
   TopicCount,
   TopicDetail,
@@ -72,6 +74,12 @@ export const api = {
     get<TranslationSummary[]>(
       `/api/translation-summaries?limit=${limit}${language ? `&language=${encodeURIComponent(language)}` : ""}`
     ),
+  similarSummaries: (conversationId: string, limit = 8) =>
+    get<SimilarSummaryResponse>(
+      `/api/similar-summaries?conversation_id=${encodeURIComponent(conversationId)}&limit=${limit}`
+    ),
+  countryClusters: (nClusters = 3) =>
+    get<CountryClustersResponse>(`/api/country-clusters?n_clusters=${nClusters}`),
   translateSummary: (conversationId: string, targetLanguage: string) =>
     post<TranslationResult>(
       `/api/translate-summary?conversation_id=${encodeURIComponent(conversationId)}&target_language=${encodeURIComponent(targetLanguage)}`

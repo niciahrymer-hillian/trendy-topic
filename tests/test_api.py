@@ -199,6 +199,51 @@ def test_translation_summaries_returns_selectable_safe_rows():
     assert {"conversation_id", "country", "language", "summary_text"} <= body[0].keys()
 
 
+def test_similar_summaries_returns_selected_and_ranked_matches():
+    base = client.get("/api/translation-summaries?limit=1").json()[0]
+    body = client.get(
+        "/api/similar-summaries",
+        params={"conversation_id": base["conversation_id"], "limit": 5},
+    ).json()
+    assert {"selected", "similar"} <= body.keys()
+    assert body["selected"]["conversation_id"] == base["conversation_id"]
+    assert isinstance(body["similar"], list)
+    if body["similar"]:
+        assert {
+            "conversation_id",
+            "country",
+            "language",
+            "topic_label",
+            "sentiment_label",
+            "summary_text",
+            "similarity_score",
+        } <= body["similar"][0].keys()
+
+
+def test_similar_summaries_unknown_id_is_404():
+    resp = client.get("/api/similar-summaries", params={"conversation_id": "does-not-exist"})
+    assert resp.status_code == 404
+
+
+def test_country_clusters_returns_clustered_countries_and_pattern_explanations():
+    body = client.get("/api/country-clusters?n_clusters=3").json()
+    assert {"countries", "patterns"} <= body.keys()
+    assert isinstance(body["countries"], list) and body["countries"]
+    assert isinstance(body["patterns"], list) and body["patterns"]
+    assert {
+        "country",
+        "iso3",
+        "cluster_id",
+        "dim1",
+        "dim2",
+        "conversations",
+        "top_topics",
+        "dominant_sentiment",
+        "positive_pct",
+    } <= body["countries"][0].keys()
+    assert "explanation" in body["patterns"][0]
+
+
 def test_translate_summary_returns_original_english_and_local(monkeypatch):
     first = client.get("/api/translation-summaries?limit=1").json()[0]
 
