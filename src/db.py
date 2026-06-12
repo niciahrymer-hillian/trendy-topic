@@ -13,12 +13,16 @@ from __future__ import annotations
 
 import os
 
+import pandas as pd
+
 from sqlalchemy import (
     Boolean, CheckConstraint, Column, Date, DateTime, ForeignKey, Integer, JSON,
-    MetaData, Numeric, String, Table, Text, UniqueConstraint, create_engine, func,
+    MetaData, Numeric, String, Table, Text, UniqueConstraint, create_engine, delete, func,
     insert, select,
 )
 from sqlalchemy.engine import Engine
+
+from . import analysis as an
 
 metadata = MetaData()
 
@@ -203,7 +207,7 @@ def load_records(engine: Engine, records: dict[str, list[dict]]) -> dict[str, in
     """
     create_all(engine)
     inserted = {"countries": 0, "conversations": 0,
-                "topic_classifications": 0, "sentiment_scores": 0}
+                "topic_classifications": 0, "sentiment_scores": 0, "trend_metrics": 0}
 
     with engine.begin() as conn:
         # 1. Upsert countries -> build name->id map.
@@ -240,5 +244,41 @@ def load_records(engine: Engine, records: dict[str, list[dict]]) -> dict[str, in
         if sent_rows:
             conn.execute(insert(sentiment_scores), sent_rows)
             inserted["sentiment_scores"] = len(sent_rows)
+
+        trend_source = conn.execute(
+            select(
+                conversations.c.time_period_month.label("month"),
+                countries.c.country_name.label("country"),
+                conversations.c.language_code.label("language"),
+                topic_classifications.c.topic_category.label("topic_category"),
+            )
+            .select_from(
+                conversations.join(countries, conversations.c.country_id == countries.c.country_id)
+                .join(
+                    topic_classifications,
+                    topic_classifications.c.conversation_id == conversations.c.conversation_id,
+                )
+            )
+            .where(conversations.c.time_period_month.is_not(None))
+            .where(topic_classifications.c.topic_category.is_not(None))
+        ).mappings().all()
+
+        metrics_df = an.topic_trend_metrics(pd.DataFrame(trend_source))
+        conn.execute(delete(trend_metrics))
+        if not metrics_df.empty:
+            metric_rows = []
+            for row in metrics_df.to_dict(orient="records"):
+                metric_rows.append({
+                    "metric_date": row["metric_date"],
+                    "country_id": existing[row["country"]],
+                    "language_code": row["language"],
+                    "topic_category": row["topic_category"],
+                    "conversation_count": int(row["conversation_count"]),
+                    "previous_period_count": int(row["previous_period_count"]),
+                    "growth_rate": None if pd.isna(row["growth_rate"]) else float(row["growth_rate"]),
+                    "trend_rank": int(row["trend_rank"]),
+                })
+            conn.execute(insert(trend_metrics), metric_rows)
+            inserted["trend_metrics"] = len(metric_rows)
 
     return inserted

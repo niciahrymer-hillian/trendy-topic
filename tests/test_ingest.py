@@ -1,5 +1,7 @@
 """Ingestion pipeline: format router, validation, mapping, and DB load."""
 
+from datetime import date
+
 import pandas as pd
 import pytest
 from sqlalchemy import create_engine, func, select
@@ -111,3 +113,104 @@ def test_load_records_is_idempotent(csv_path):
     db.load_records(engine, records)
     second = db.load_records(engine, records)  # re-load same data
     assert second["conversations"] == 0  # nothing duplicated
+
+
+def test_load_records_populates_trend_metrics_with_growth_and_rank():
+    engine = create_engine("sqlite:///:memory:")
+    records = {
+        "countries": [{
+            "country_name": "United States", "iso_code": "USA",
+            "region": "North America", "default_language": "English",
+        }],
+        "conversations": [
+            {
+                "conversation_id": "T1", "country_name": "United States", "source_dataset": "test",
+                "source_format": "csv", "model_name": "gpt-4o", "language_code": "English",
+                "detected_language": "English", "created_at": None, "time_period_day": None,
+                "time_period_month": date(2024, 2, 1), "is_toxic": False, "is_redacted": False,
+                "safe_for_dashboard": True, "original_question_cleaned": "a", "conversation_summary": "a",
+                "question_pattern": None,
+            },
+            {
+                "conversation_id": "T2", "country_name": "United States", "source_dataset": "test",
+                "source_format": "csv", "model_name": "gpt-4o", "language_code": "English",
+                "detected_language": "English", "created_at": None, "time_period_day": None,
+                "time_period_month": date(2024, 3, 1), "is_toxic": False, "is_redacted": False,
+                "safe_for_dashboard": True, "original_question_cleaned": "b", "conversation_summary": "b",
+                "question_pattern": None,
+            },
+            {
+                "conversation_id": "T3", "country_name": "United States", "source_dataset": "test",
+                "source_format": "csv", "model_name": "gpt-4o", "language_code": "English",
+                "detected_language": "English", "created_at": None, "time_period_day": None,
+                "time_period_month": date(2024, 3, 1), "is_toxic": False, "is_redacted": False,
+                "safe_for_dashboard": True, "original_question_cleaned": "c", "conversation_summary": "c",
+                "question_pattern": None,
+            },
+            {
+                "conversation_id": "T4", "country_name": "United States", "source_dataset": "test",
+                "source_format": "csv", "model_name": "gpt-4o", "language_code": "English",
+                "detected_language": "English", "created_at": None, "time_period_day": None,
+                "time_period_month": date(2024, 3, 1), "is_toxic": False, "is_redacted": False,
+                "safe_for_dashboard": True, "original_question_cleaned": "d", "conversation_summary": "d",
+                "question_pattern": None,
+            },
+        ],
+        "topic_classifications": [
+            {
+                "conversation_id": "T1", "topic_category": "Programming & Tech", "topic_subcategory": None,
+                "topic_confidence": None, "classification_method": "test", "classification_model": None,
+            },
+            {
+                "conversation_id": "T2", "topic_category": "Programming & Tech", "topic_subcategory": None,
+                "topic_confidence": None, "classification_method": "test", "classification_model": None,
+            },
+            {
+                "conversation_id": "T3", "topic_category": "Programming & Tech", "topic_subcategory": None,
+                "topic_confidence": None, "classification_method": "test", "classification_model": None,
+            },
+            {
+                "conversation_id": "T4", "topic_category": "Travel & Culture", "topic_subcategory": None,
+                "topic_confidence": None, "classification_method": "test", "classification_model": None,
+            },
+        ],
+        "sentiment_scores": [],
+    }
+
+    counts = db.load_records(engine, records)
+
+    assert counts["trend_metrics"] == 3
+    with engine.begin() as conn:
+        rows = conn.execute(
+            select(
+                db.trend_metrics.c.metric_date,
+                db.trend_metrics.c.topic_category,
+                db.trend_metrics.c.conversation_count,
+                db.trend_metrics.c.previous_period_count,
+                db.trend_metrics.c.growth_rate,
+                db.trend_metrics.c.trend_rank,
+            )
+            .order_by(db.trend_metrics.c.metric_date, db.trend_metrics.c.trend_rank)
+        ).mappings().all()
+
+    assert set(rows[0].keys()) == {
+        "metric_date", "topic_category", "conversation_count",
+        "previous_period_count", "growth_rate", "trend_rank",
+    }
+    feb = rows[0]
+    march_growth = rows[1]
+    march_new = rows[2]
+    assert feb["conversation_count"] == 1
+    assert feb["previous_period_count"] == 0
+    assert feb["growth_rate"] is None
+    assert feb["trend_rank"] == 1
+    assert march_growth["topic_category"] == "Programming & Tech"
+    assert march_growth["conversation_count"] == 2
+    assert march_growth["previous_period_count"] == 1
+    assert float(march_growth["growth_rate"]) == 1.0
+    assert march_growth["trend_rank"] == 1
+    assert march_new["topic_category"] == "Travel & Culture"
+    assert march_new["conversation_count"] == 1
+    assert march_new["previous_period_count"] == 0
+    assert march_new["growth_rate"] is None
+    assert march_new["trend_rank"] == 2

@@ -6,6 +6,24 @@
 
 The platform combines data engineering, natural language processing, AI-powered classification, sentiment analysis, language translation, geospatial analytics, AI voice summaries, and interactive visualizations to transform raw conversation data into actionable insights.
 
+## Quick Start Button in VS Code
+
+This repo includes a one-click Run and Debug setup.
+
+Use the green Run and Debug button in VS Code and choose:
+
+`Start Trendy Topic Stack`
+
+What it does:
+
+- Starts the FastAPI backend on port `8000`
+- Starts the Vite frontend on port `5173`
+- Opens the dashboard in your browser automatically when the frontend is ready
+
+If the Python interpreter is not already selected in VS Code, point it to:
+
+`/Users/shocka/trendy-topic/.venv/bin/python`
+
 ---
 
 

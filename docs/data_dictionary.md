@@ -32,5 +32,7 @@
 | global_rank | integer | Global Curiosity Index rank | Low |
 | country_rank | integer | Country-level curiosity rank | Low |
 | curiosity_score | numeric | Repeated question popularity score | Low |
+| previous_period_count | integer | Prior period conversation count for the same topic slice | Low |
 | growth_rate | numeric | Topic growth rate over time | Low |
+| trend_rank | integer | Rank of topic growth within the same month/country/language slice | Low |
 | audio_file_path | text | Path to generated AI voice file | Low |
