@@ -14,6 +14,8 @@ httpx          # used by FastAPI's TestClient in tests
 datasets
 huggingface_hub
 requests
+deep-translator   # default translation provider (free Google endpoint, no key)
+argostranslate    # offline fallback when deep-translator is blocked/fails
 google-cloud-translate
 
 # --- PostgreSQL scale path (schema in sql/) ---

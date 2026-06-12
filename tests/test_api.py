@@ -56,6 +56,15 @@ def test_topics_by_param(by, expected):
     assert len(body) == expected
 
 
+def test_topics_filtered_by_country_is_subset_of_global():
+    """Dynamic Topic Cloud (GAI-049): country filter narrows the topic counts."""
+    global_total = sum(t["conversations"] for t in client.get("/api/topics").json())
+    japan = client.get("/api/topics", params={"country": "Japan"}).json()
+    japan_total = sum(t["conversations"] for t in japan)
+    assert 0 < japan_total < global_total
+    assert japan_total == 60  # 60 sample rows per country
+
+
 def test_topic_hierarchy_returns_category_and_subtopic_counts():
     body = client.get("/api/topic-hierarchy").json()
     assert isinstance(body, list) and body

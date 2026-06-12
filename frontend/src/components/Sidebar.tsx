@@ -15,6 +15,7 @@ const NAV = [
   { to: "/ask", label: "Ask the Dataset" },
   { to: "/translations", label: "Translations" },
   { to: "/ai-insights", label: "AI Insights" },
+  { to: "/voice", label: "Voice Studio" },
 ];
 
 export default function Sidebar() {

@@ -1,0 +1,48 @@
+# Local full stack: PostgreSQL + FastAPI API + React/nginx frontend (GAI-065).
+#
+#   docker compose up --build
+#   frontend -> http://localhost:5173   |   api -> http://localhost:8000/api/summary
+#
+# API keys (GROQ_API_KEY, ELEVENLABS_API_KEY, GOOGLE_CLOUD_TRANSLATION_API_KEY) are
+# read from .env if present (optional). DATABASE_URL is injected to point at the db
+# service and overrides any value in .env.
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: trendy
+      POSTGRES_PASSWORD: trendy
+      POSTGRES_DB: trendy
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trendy"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  api:
+    build: .
+    environment:
+      DATABASE_URL: postgresql+psycopg://trendy:trendy@db:5432/trendy
+    env_file:
+      - path: .env
+        required: false
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - api
+
+volumes:
+  pgdata:

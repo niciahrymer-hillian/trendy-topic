@@ -37,10 +37,14 @@ def _find_language(question: str, df: pd.DataFrame) -> str | None:
     return None
 
 
-def answer_question(df: pd.DataFrame, question: str):
-    """Answer a natural-language question from aggregated data."""
+def try_answer(df: pd.DataFrame, question: str):
+    """Confident deterministic match only. Returns ``(answer, table)`` or ``None``.
+
+    ``None`` means the rule parser couldn't specifically recognize the question —
+    the hybrid layer (src/ai_assistant) uses that as the signal to fall back to Groq.
+    """
     if not question or not question.strip():
-        return "Ask something like: 'What are the top topics in Japan?'", None
+        return None
 
     country = _find_country(question, df)
     language = _find_language(question, df)
@@ -63,6 +67,18 @@ def answer_question(df: pd.DataFrame, question: str):
 
     if "country" in q or "where" in q:
         return "Conversations by country:", an.country_volume(df)
+
+    return None
+
+
+def answer_question(df: pd.DataFrame, question: str):
+    """Always-answers wrapper: a confident match, or a global-top-topics fallback."""
+    if not question or not question.strip():
+        return "Ask something like: 'What are the top topics in Japan?'", None
+
+    matched = try_answer(df, question)
+    if matched is not None:
+        return matched
 
     # Default: global top topics.
     table = an.topic_counts(df).head(10)

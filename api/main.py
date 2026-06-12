@@ -10,14 +10,22 @@ Run:  uvicorn api.main:app --reload --port 8000
 from __future__ import annotations
 
 import os
+import uuid
+from pathlib import Path
 
 from pathlib import Path
 
 import pandas as pd
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import Response
 from sqlalchemy import insert
+
+# Load .env so keys (GROQ_API_KEY, ELEVENLABS_API_KEY, DATABASE_URL, …) are picked up
+# automatically — your partner just fills in .env, no manual `source` needed.
+load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 from src import analysis as an, ask as ask_mod, data_access as da, db as db_mod, translator as tr
 from src import voice_briefing as vb
@@ -149,9 +157,23 @@ def country_compare(countries: list[str] = Query(...)) -> dict:
 
 
 @app.get("/api/topics")
-def topics(by: str = Query("label", pattern="^(label|category)$")) -> list[dict]:
+def topics(
+    by: str = Query("label", pattern="^(label|category)$"),
+    country: str | None = None,
+    language: str | None = None,
+) -> list[dict]:
+    """Topic counts, optionally filtered by country and/or language.
+
+    The optional filters power the Dynamic Topic Cloud (GAI-049); with no filters
+    this returns the global counts every other caller expects.
+    """
+    df = _df()
+    if country:
+        df = df[df["country"] == country]
+    if language:
+        df = df[df["language"] == language]
     column = "topic_category" if by == "category" else "topic_label"
-    return _records(an.topic_counts(_df(), column))
+    return _records(an.topic_counts(df, column))
 
 
 @app.get("/api/topic-hierarchy")
@@ -259,7 +281,7 @@ def translate_summary(conversation_id: str, target_language: str) -> dict:
     row = sub.iloc[0]
     source_language = str(row["language"])
     original_text = str(row["summary_text"])
-    provider = "google_cloud_translate"
+    provider = os.getenv("TRANSLATION_PROVIDER", "groq")
 
     try:
         english_text = tr.translate_to_english(
@@ -392,8 +414,14 @@ def language_topics() -> list[dict]:
 
 @app.get("/api/ask")
 def ask(q: str = "") -> dict:
-    answer, table = ask_mod.answer_question(_df(), q)
-    return {"answer": answer, "table": _records(table) if table is not None else []}
+    """Hybrid assistant: deterministic parser first, Groq fallback when a key is set.
+
+    Returns {answer, table, source} where source is 'rules' or 'ai'. Works without
+    a Groq key (falls back to the deterministic answer); only aggregated stats are
+    ever sent to the LLM.
+    """
+    from src import ai_assistant
+    return ai_assistant.answer(_df(), q)
 
 
 @app.post("/api/extract")
@@ -422,3 +450,62 @@ def extract(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:  # Groq/network/parse failures
         raise HTTPException(status_code=502, detail=f"Extraction failed: {e}")
+
+
+@app.get("/api/voice/script")
+def voice_script(country: str | None = None, topic: str | None = None) -> dict:
+    """Build the safe, aggregated briefing script (no API key needed)."""
+    from src import voice_briefing as vb
+
+    try:
+        script = vb.build_script(_df(), country=country, topic=topic)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return {"script": script, "country": country, "topic": topic, "chars": len(script)}
+
+
+@app.post("/api/voice/audio")
+def voice_audio(country: str | None = None, topic: str | None = None, language: str | None = None):
+    """Generate an MP3 briefing via ElevenLabs (requires ELEVENLABS_API_KEY).
+
+    Only the aggregated script is synthesized (GAI-059). When a non-English
+    language is requested and a translation provider is configured, the script
+    is localized first (GAI-058); otherwise it falls back to English.
+    """
+    from src import db, voice_briefing as vb
+
+    if not os.getenv("ELEVENLABS_API_KEY"):
+        raise HTTPException(status_code=503, detail="ELEVENLABS_API_KEY is not configured.")
+    try:
+        script = vb.build_script(_df(), country=country, topic=topic)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    if language and language.strip().lower() not in {"english", "en"}:
+        try:
+            script = vb.localize(script, language)
+        except Exception:
+            pass  # no translation provider configured — voice the English script
+
+    try:
+        audio = vb.synthesize(script)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Voice synthesis failed: {e}")
+
+    audio_dir = Path(__file__).resolve().parents[1] / "assets" / "audio"
+    audio_dir.mkdir(parents=True, exist_ok=True)
+    fpath = audio_dir / f"brief_{uuid.uuid4().hex[:12]}.mp3"
+    fpath.write_bytes(audio)
+
+    if country and os.getenv("DATABASE_URL"):
+        try:
+            vb.store_voice_brief(
+                db.get_engine(), country=country, summary_text=script,
+                topic=topic, language=language, audio_file_path=str(fpath),
+            )
+        except Exception:
+            pass  # storage is best-effort; audio still returns
+
+    return Response(content=audio, media_type="audio/mpeg")
