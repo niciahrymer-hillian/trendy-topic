@@ -164,3 +164,10 @@ export interface ExtractParams {
   language?: string;
   limit?: number;
 }
+
+export interface VoiceScript {
+  script: string;
+  country: string | null;
+  topic: string | null;
+  chars: number;
+}

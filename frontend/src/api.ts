@@ -21,6 +21,7 @@ import type {
   TranslationSummary,
   TrendMetric,
   TrendPoint,
+  VoiceScript,
 } from "./types";
 
 async function get<T>(path: string): Promise<T> {
@@ -81,5 +82,30 @@ export const api = {
     if (p.language) q.set("language", p.language);
     if (p.limit) q.set("limit", String(p.limit));
     return post<ExtractResponse>(`/api/extract?${q.toString()}`);
+  },
+  voiceScript: (country?: string, topic?: string) => {
+    const q = new URLSearchParams();
+    if (country) q.set("country", country);
+    if (topic) q.set("topic", topic);
+    return get<VoiceScript>(`/api/voice/script?${q.toString()}`);
+  },
+  // Returns audio bytes (MP3) as a Blob for playback; surfaces the API error detail.
+  voiceAudio: async (country?: string, topic?: string, language?: string): Promise<Blob> => {
+    const q = new URLSearchParams();
+    if (country) q.set("country", country);
+    if (topic) q.set("topic", topic);
+    if (language) q.set("language", language);
+    const res = await fetch(`/api/voice/audio?${q.toString()}`, { method: "POST" });
+    if (!res.ok) {
+      let detail = `${res.status} ${res.statusText}`;
+      try {
+        const body = await res.json();
+        if (body?.detail) detail = body.detail;
+      } catch {
+        /* non-JSON error body */
+      }
+      throw new Error(detail);
+    }
+    return res.blob();
   },
 };

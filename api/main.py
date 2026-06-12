@@ -10,11 +10,19 @@ Run:  uvicorn api.main:app --reload --port 8000
 from __future__ import annotations
 
 import os
+import uuid
+from pathlib import Path
 
 import pandas as pd
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 from sqlalchemy import insert
+
+# Load .env so keys (GROQ_API_KEY, ELEVENLABS_API_KEY, DATABASE_URL, …) are picked up
+# automatically — your partner just fills in .env, no manual `source` needed.
+load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 from src import analysis as an, ask as ask_mod, data_access as da, db as db_mod, translator as tr
 
@@ -329,3 +337,62 @@ def extract(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:  # Groq/network/parse failures
         raise HTTPException(status_code=502, detail=f"Extraction failed: {e}")
+
+
+@app.get("/api/voice/script")
+def voice_script(country: str | None = None, topic: str | None = None) -> dict:
+    """Build the safe, aggregated briefing script (no API key needed)."""
+    from src import voice_briefing as vb
+
+    try:
+        script = vb.build_script(_df(), country=country, topic=topic)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return {"script": script, "country": country, "topic": topic, "chars": len(script)}
+
+
+@app.post("/api/voice/audio")
+def voice_audio(country: str | None = None, topic: str | None = None, language: str | None = None):
+    """Generate an MP3 briefing via ElevenLabs (requires ELEVENLABS_API_KEY).
+
+    Only the aggregated script is synthesized (GAI-059). When a non-English
+    language is requested and a translation provider is configured, the script
+    is localized first (GAI-058); otherwise it falls back to English.
+    """
+    from src import db, voice_briefing as vb
+
+    if not os.getenv("ELEVENLABS_API_KEY"):
+        raise HTTPException(status_code=503, detail="ELEVENLABS_API_KEY is not configured.")
+    try:
+        script = vb.build_script(_df(), country=country, topic=topic)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    if language and language.strip().lower() not in {"english", "en"}:
+        try:
+            script = vb.localize(script, language)
+        except Exception:
+            pass  # no translation provider configured — voice the English script
+
+    try:
+        audio = vb.synthesize(script)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Voice synthesis failed: {e}")
+
+    audio_dir = Path(__file__).resolve().parents[1] / "assets" / "audio"
+    audio_dir.mkdir(parents=True, exist_ok=True)
+    fpath = audio_dir / f"brief_{uuid.uuid4().hex[:12]}.mp3"
+    fpath.write_bytes(audio)
+
+    if country and os.getenv("DATABASE_URL"):
+        try:
+            vb.store_voice_brief(
+                db.get_engine(), country=country, summary_text=script,
+                topic=topic, language=language, audio_file_path=str(fpath),
+            )
+        except Exception:
+            pass  # storage is best-effort; audio still returns
+
+    return Response(content=audio, media_type="audio/mpeg")

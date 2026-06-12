@@ -10,6 +10,7 @@ import Wow from "./pages/Wow";
 import Ask from "./pages/Ask";
 import Translations from "./pages/Translations";
 import AIInsights from "./pages/AIInsights";
+import VoiceStudio from "./pages/VoiceStudio";
 
 export default function App() {
   return (
@@ -25,6 +26,7 @@ export default function App() {
         <Route path="ask" element={<Ask />} />
         <Route path="translations" element={<Translations />} />
         <Route path="ai-insights" element={<AIInsights />} />
+        <Route path="voice" element={<VoiceStudio />} />
       </Route>
     </Routes>
   );
