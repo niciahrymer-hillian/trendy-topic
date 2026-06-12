@@ -8,6 +8,7 @@ import Languages from "./pages/Languages";
 import Sentiment from "./pages/Sentiment";
 import Wow from "./pages/Wow";
 import Ask from "./pages/Ask";
+import AIInsights from "./pages/AIInsights";
 
 export default function App() {
   return (
@@ -21,6 +22,7 @@ export default function App() {
         <Route path="sentiment" element={<Sentiment />} />
         <Route path="wow" element={<Wow />} />
         <Route path="ask" element={<Ask />} />
+        <Route path="ai-insights" element={<AIInsights />} />
       </Route>
     </Routes>
   );

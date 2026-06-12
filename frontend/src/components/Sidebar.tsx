@@ -12,6 +12,7 @@ const NAV = [
   { to: "/sentiment", label: "Sentiment" },
   { to: "/wow", label: "Wow-Factor Insights" },
   { to: "/ask", label: "Ask the Dataset" },
+  { to: "/ai-insights", label: "AI Insights" },
 ];
 
 export default function Sidebar() {

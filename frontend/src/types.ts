@@ -92,3 +92,30 @@ export interface AskResponse {
   answer: string;
   table: Record<string, string | number>[];
 }
+
+export interface ExtractedTopic {
+  topic: string;
+  summary: string;
+}
+
+export interface ExtractionResult {
+  top_topics: ExtractedTopic[];
+  key_insights: string;
+  emerging_trends: string;
+  wow_factor_insights: string;
+  story_angles: string;
+}
+
+export interface ExtractResponse {
+  filter_description: string;
+  conversations_analyzed: number;
+  result: ExtractionResult;
+  extraction_id: number | null;
+}
+
+export interface ExtractParams {
+  country?: string;
+  topic?: string;
+  language?: string;
+  limit?: number;
+}
