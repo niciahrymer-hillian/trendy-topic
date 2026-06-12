@@ -321,8 +321,14 @@ def language_topics() -> list[dict]:
 
 @app.get("/api/ask")
 def ask(q: str = "") -> dict:
-    answer, table = ask_mod.answer_question(_df(), q)
-    return {"answer": answer, "table": _records(table) if table is not None else []}
+    """Hybrid assistant: deterministic parser first, Groq fallback when a key is set.
+
+    Returns {answer, table, source} where source is 'rules' or 'ai'. Works without
+    a Groq key (falls back to the deterministic answer); only aggregated stats are
+    ever sent to the LLM.
+    """
+    from src import ai_assistant
+    return ai_assistant.answer(_df(), q)
 
 
 @app.post("/api/extract")

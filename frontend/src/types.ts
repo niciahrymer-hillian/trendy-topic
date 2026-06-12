@@ -136,6 +136,7 @@ export interface LanguageTopicCell {
 export interface AskResponse {
   answer: string;
   table: Record<string, string | number>[];
+  source?: "rules" | "ai";
 }
 
 export interface ExtractedTopic {

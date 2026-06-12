@@ -1,5 +1,6 @@
-// Ask the Dataset — natural-language questions answered from aggregated data
-// (via /api/ask). Answers never expose raw private chats.
+// Ask the Dataset — hybrid assistant: a fast deterministic parser answers simple
+// questions instantly; anything it can't match falls back to Groq, grounded in an
+// aggregated stats bundle (never raw chats). Works without a key (rules-only).
 
 import { useEffect, useState } from "react";
 import { api } from "../api";
@@ -9,9 +10,9 @@ import type { AskResponse } from "../types";
 
 const EXAMPLES = [
   "What are the top topics in Japan?",
-  "What do French conversations ask about?",
+  "Compare coding interest in Japan and Brazil.",
+  "Why might sentiment differ across countries?",
   "Which language is most common?",
-  "Conversations by country",
 ];
 
 export default function Ask() {
@@ -40,12 +41,15 @@ export default function Ask() {
 
   return (
     <div>
-      <PageHeader title="Ask the Dataset" subtitle="Natural-language questions answered from aggregates only." />
+      <PageHeader
+        title="Ask the Dataset"
+        subtitle="AI-assisted: instant answers for simple questions, Groq for the rest — grounded in aggregates only."
+      />
       <div className="controls">
         <input
           type="text"
           style={{ flex: 1, minWidth: 280 }}
-          placeholder="e.g. What are the top topics in Japan?"
+          placeholder="e.g. Compare coding interest in Japan and Brazil"
           value={q}
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && run(q)}
@@ -58,6 +62,9 @@ export default function Ask() {
       {resp && !loading && (
         <Section title="Answer">
           <div className="answer">{resp.answer}</div>
+          <p className="pill">
+            {resp.source === "ai" ? "Answered by Groq (grounded in aggregated stats)" : "Answered from aggregated data"}
+          </p>
           {columns.length > 0 && <Table columns={columns} rows={resp.table} />}
         </Section>
       )}

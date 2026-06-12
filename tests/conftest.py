@@ -12,6 +12,22 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
+
+@pytest.fixture(autouse=True)
+def _no_external_api_keys(monkeypatch):
+    """Strip provider keys so tests never make live API calls or DB connections.
+
+    api/main.py loads .env on import (which may contain real keys); clearing them
+    here keeps every test on the deterministic / stubbed paths. Tests that exercise
+    an LLM/voice path inject a stub client directly instead of relying on a key.
+    """
+    for var in (
+        "GROQ_API_KEY", "ELEVENLABS_API_KEY", "GOOGLE_CLOUD_TRANSLATION_API_KEY",
+        "GOOGLE_APPLICATION_CREDENTIALS", "DEEPL_API_KEY", "DATABASE_URL",
+    ):
+        monkeypatch.delenv(var, raising=False)
+
+
 _COLUMNS = [
     "record_id", "country", "iso2", "language", "model_family", "timestamp_utc",
     "turn_count", "prompt_topic", "sample_user_prompt_cleaned",
