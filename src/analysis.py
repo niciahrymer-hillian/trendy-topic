@@ -34,6 +34,17 @@ def topic_counts(df: pd.DataFrame, column: str = "topic_label") -> pd.DataFrame:
     return out
 
 
+def topic_hierarchy(df: pd.DataFrame) -> pd.DataFrame:
+    """Category -> subtopic counts for hierarchical treemaps."""
+    return (
+        df.groupby(["topic_category", "topic_label"])
+        .size()
+        .reset_index(name="conversations")
+        .sort_values(["topic_category", "conversations", "topic_label"], ascending=[True, False, True])
+        .reset_index(drop=True)
+    )
+
+
 def topic_by_country(df: pd.DataFrame) -> pd.DataFrame:
     """Long-form country × topic counts (for heatmaps / comparison charts)."""
     return (
@@ -86,6 +97,64 @@ def trend_over_time(df: pd.DataFrame, topic: str | None = None) -> pd.DataFrame:
     return out.sort_values("month").reset_index(drop=True)
 
 
+def topic_trend_metrics(df: pd.DataFrame) -> pd.DataFrame:
+    """Monthly topic counts with previous-period count, growth rate, and rank.
+
+    Metrics are computed per (country, language, topic_category) across months.
+    ``growth_rate`` is fractional growth versus the prior month for the same slice,
+    and is null when the previous period count is 0.
+    """
+    if df.empty:
+        return pd.DataFrame(
+            columns=[
+                "metric_date",
+                "country",
+                "language",
+                "topic_category",
+                "conversation_count",
+                "previous_period_count",
+                "growth_rate",
+                "trend_rank",
+            ]
+        )
+
+    metrics = (
+        df.groupby(["month", "country", "language", "topic_category"])
+        .size()
+        .reset_index(name="conversation_count")
+        .rename(columns={"month": "metric_date"})
+    )
+    metrics["metric_date"] = pd.to_datetime(metrics["metric_date"]).dt.date
+    metrics = metrics.sort_values(
+        ["country", "language", "topic_category", "metric_date"]
+    ).reset_index(drop=True)
+
+    metrics["previous_period_count"] = (
+        metrics.groupby(["country", "language", "topic_category"])["conversation_count"]
+        .shift(1)
+        .fillna(0)
+        .astype(int)
+    )
+
+    metrics["growth_rate"] = (
+        (metrics["conversation_count"] - metrics["previous_period_count"])
+        / metrics["previous_period_count"].replace(0, pd.NA)
+    )
+
+    ranked = metrics.sort_values(
+        ["metric_date", "country", "language", "growth_rate", "conversation_count", "topic_category"],
+        ascending=[True, True, True, False, False, True],
+        na_position="last",
+    ).reset_index(drop=True)
+    ranked["trend_rank"] = (
+        ranked.groupby(["metric_date", "country", "language"]).cumcount() + 1
+    )
+
+    return ranked.sort_values(
+        ["metric_date", "country", "language", "trend_rank"]
+    ).reset_index(drop=True)
+
+
 def curiosity_index(df: pd.DataFrame, n: int = 15) -> pd.DataFrame:
     """Most frequently asked sample prompts ('what the world asks').
 
@@ -110,6 +179,42 @@ def country_comparison(df: pd.DataFrame, countries: list[str]) -> pd.DataFrame:
     return (
         subset.groupby(["country", "topic_label"]).size().reset_index(name="conversations")
     )
+
+
+def country_comparison_bundle(df: pd.DataFrame, countries: list[str]) -> dict[str, pd.DataFrame]:
+    """Comparable country slices for volume, topic, sentiment, and language charts."""
+    subset = df[df["country"].isin(countries)].copy()
+    if subset.empty:
+        empty = pd.DataFrame()
+        return {
+            "volume": empty,
+            "topics": empty,
+            "sentiment": empty,
+            "languages": empty,
+        }
+
+    volume = (
+        subset.groupby("country").size().reset_index(name="conversations")
+        .sort_values(["conversations", "country"], ascending=[False, True])
+        .reset_index(drop=True)
+    )
+    topics = (
+        subset.groupby(["country", "topic_category"]).size().reset_index(name="conversations")
+        .sort_values(["country", "conversations", "topic_category"], ascending=[True, False, True])
+        .reset_index(drop=True)
+    )
+    sentiment = sentiment_breakdown(subset, by="country")
+    languages = (
+        subset.groupby(["country", "language"]).size().reset_index(name="conversations")
+        .sort_values(["country", "conversations", "language"], ascending=[True, False, True])
+        .reset_index(drop=True)
+    )
+    return {
+        "volume": volume,
+        "topics": topics,
+        "sentiment": sentiment,
+        "languages": languages,
+    }
 
 
 def _mode(series: pd.Series) -> str:

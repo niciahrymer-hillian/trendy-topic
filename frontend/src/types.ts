@@ -30,6 +30,12 @@ export interface TopicCount {
   conversations: number;
 }
 
+export interface TopicHierarchyItem {
+  topic_category: string;
+  topic_label: string;
+  conversations: number;
+}
+
 export interface LanguageCount {
   language: string;
   conversations: number;
@@ -64,6 +70,14 @@ export interface CountryDetail {
   questions: QuestionRow[];
 }
 
+export interface CountryComparisonResponse {
+  countries: string[];
+  volume: { country: string; conversations: number }[];
+  topics: { country: string; topic_category: string; conversations: number }[];
+  sentiment: { country: string; sentiment_label: string; conversations: number }[];
+  languages: { country: string; language: string; conversations: number }[];
+}
+
 export interface TopicDetail {
   topic: string;
   by_country: { country: string; conversations: number }[];
@@ -74,6 +88,37 @@ export interface TrendPoint {
   month: string;
   topic_label: string;
   conversations: number;
+}
+
+export interface TrendMetric {
+  metric_date: string;
+  country: string;
+  language: string;
+  topic_category: string;
+  conversation_count: number;
+  previous_period_count: number;
+  growth_rate: number | null;
+  trend_rank: number;
+}
+
+export interface TranslationSummary {
+  conversation_id: string;
+  country: string;
+  language: string;
+  summary_text: string;
+}
+
+export interface TranslationResult {
+  conversation_id: string;
+  country: string;
+  source_language: string;
+  target_language: string;
+  original_text: string;
+  english_text: string;
+  local_text: string;
+  stored: boolean;
+  stored_rows: number;
+  provider: string;
 }
 
 export interface HeatmapCell {

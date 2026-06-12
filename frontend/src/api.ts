@@ -4,6 +4,7 @@
 import type {
   AskResponse,
   CountryDetail,
+  CountryComparisonResponse,
   CountryProfile,
   CuriosityItem,
   ExtractParams,
@@ -15,6 +16,10 @@ import type {
   Summary,
   TopicCount,
   TopicDetail,
+  TopicHierarchyItem,
+  TranslationResult,
+  TranslationSummary,
+  TrendMetric,
   TrendPoint,
 } from "./types";
 
@@ -45,14 +50,27 @@ export const api = {
   summary: () => get<Summary>("/api/summary"),
   countries: () => get<CountryProfile[]>("/api/countries"),
   country: (iso3: string) => get<CountryDetail>(`/api/country/${iso3}`),
+  countryCompare: (countries: string[]) =>
+    get<CountryComparisonResponse>(`/api/country-compare?${countries.map((c) => `countries=${encodeURIComponent(c)}`).join("&")}`),
   topics: (by: "label" | "category" = "label") =>
     get<TopicCount[]>(`/api/topics?by=${by}`),
+  topicHierarchy: () => get<TopicHierarchyItem[]>("/api/topic-hierarchy"),
   topic: (label: string) => get<TopicDetail>(`/api/topic/${encodeURIComponent(label)}`),
   languages: () => get<LanguageCount[]>("/api/languages"),
   sentiment: (by?: "country" | "topic_label" | "language") =>
     get<SentimentCount[]>(`/api/sentiment${by ? `?by=${by}` : ""}`),
   curiosity: (n = 15) => get<CuriosityItem[]>(`/api/curiosity?n=${n}`),
   trends: () => get<TrendPoint[]>("/api/trends"),
+  trendMetrics: (limit = 40, latestOnly = true) =>
+    get<TrendMetric[]>(`/api/trend-metrics?limit=${limit}&latest_only=${latestOnly}`),
+  translationSummaries: (limit = 50, language?: string) =>
+    get<TranslationSummary[]>(
+      `/api/translation-summaries?limit=${limit}${language ? `&language=${encodeURIComponent(language)}` : ""}`
+    ),
+  translateSummary: (conversationId: string, targetLanguage: string) =>
+    post<TranslationResult>(
+      `/api/translate-summary?conversation_id=${encodeURIComponent(conversationId)}&target_language=${encodeURIComponent(targetLanguage)}`
+    ),
   heatmap: () => get<HeatmapCell[]>("/api/heatmap"),
   languageTopics: () => get<LanguageTopicCell[]>("/api/language-topics"),
   ask: (q: string) => get<AskResponse>(`/api/ask?q=${encodeURIComponent(q)}`),

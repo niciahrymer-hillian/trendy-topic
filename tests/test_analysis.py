@@ -1,5 +1,9 @@
 """Aggregation/metric functions."""
 
+from datetime import date
+
+import pandas as pd
+
 from src import analysis as an
 
 
@@ -81,10 +85,26 @@ def test_country_comparison_unknown_country_returns_empty(enriched_df):
     assert len(result) == 0
 
 
+def test_country_comparison_bundle_contains_all_requested_slices(enriched_df):
+    bundle = an.country_comparison_bundle(enriched_df, ["United States", "Japan"])
+    assert set(bundle.keys()) == {"volume", "topics", "sentiment", "languages"}
+    assert set(bundle["volume"].columns) == {"country", "conversations"}
+    assert {"country", "topic_category", "conversations"} <= set(bundle["topics"].columns)
+    assert {"country", "sentiment_label", "conversations"} <= set(bundle["sentiment"].columns)
+    assert {"country", "language", "conversations"} <= set(bundle["languages"].columns)
+
+
 def test_topic_counts_by_category(enriched_df):
     counts = an.topic_counts(enriched_df, column="topic_category")
     assert "topic_category" in counts.columns
     assert counts["conversations"].is_monotonic_decreasing
+
+
+def test_topic_hierarchy_returns_category_and_subtopic_counts(enriched_df):
+    tree = an.topic_hierarchy(enriched_df)
+    assert {"topic_category", "topic_label", "conversations"} <= set(tree.columns)
+    row = tree[(tree["topic_category"] == "Programming & Tech") & (tree["topic_label"] == "Coding & Debugging")].iloc[0]
+    assert row["conversations"] == 2
 
 
 def test_trend_over_time_filtered_by_topic(enriched_df):
@@ -100,3 +120,64 @@ def test_sentiment_breakdown_no_group(enriched_df):
     result = an.sentiment_breakdown(enriched_df)
     assert {"sentiment_label", "conversations"} <= set(result.columns)
     assert result["conversations"].sum() == len(enriched_df)
+
+
+def test_topic_trend_metrics_include_count_previous_growth_and_rank(enriched_df):
+    extra = enriched_df.iloc[[0]].copy()
+    extra["month"] = "2024-02"
+    metrics = an.topic_trend_metrics(
+        enriched_df.copy().pipe(lambda df: __import__("pandas").concat([df, extra], ignore_index=True))
+    )
+
+    us_english = metrics[
+        (metrics["country"] == "United States")
+        & (metrics["language"] == "English")
+        & (metrics["topic_category"] == "Programming & Tech")
+    ].sort_values("metric_date")
+
+    first = us_english.iloc[0]
+    second = us_english.iloc[1]
+    assert first["metric_date"] == date(2024, 1, 1)
+    assert first["conversation_count"] == 1
+    assert first["previous_period_count"] == 0
+    assert pd.isna(first["growth_rate"])
+    assert second["metric_date"] == date(2024, 2, 1)
+    assert second["conversation_count"] == 1
+    assert second["previous_period_count"] == 1
+    assert second["growth_rate"] == 0
+    assert second["trend_rank"] == 1
+
+
+def test_topic_trend_metrics_rank_fastest_growth_first(enriched_df):
+    growth_df = enriched_df.copy()
+    growth_df.loc[len(growth_df)] = {
+        "country": "United States", "iso2": "US", "iso3": "USA", "language": "English",
+        "topic_label": "Travel & Local Help", "topic_category": "Travel & Culture",
+        "sentiment_label": "positive", "sentiment_score": 0.4, "month": "2024-02",
+        "turn_count": 3, "redacted": False, "sample_user_prompt_cleaned": "Plan a trip",
+    }
+    growth_df.loc[len(growth_df)] = {
+        "country": "United States", "iso2": "US", "iso3": "USA", "language": "English",
+        "topic_label": "Travel & Local Help", "topic_category": "Travel & Culture",
+        "sentiment_label": "positive", "sentiment_score": 0.4, "month": "2024-03",
+        "turn_count": 3, "redacted": False, "sample_user_prompt_cleaned": "Plan a trip",
+    }
+    growth_df.loc[len(growth_df)] = {
+        "country": "United States", "iso2": "US", "iso3": "USA", "language": "English",
+        "topic_label": "Travel & Local Help", "topic_category": "Travel & Culture",
+        "sentiment_label": "positive", "sentiment_score": 0.4, "month": "2024-03",
+        "turn_count": 3, "redacted": False, "sample_user_prompt_cleaned": "Plan a trip",
+    }
+
+    metrics = an.topic_trend_metrics(growth_df)
+    march_us = metrics[
+        (metrics["metric_date"] == date(2024, 3, 1))
+        & (metrics["country"] == "United States")
+        & (metrics["language"] == "English")
+    ].sort_values("trend_rank")
+
+    assert list(march_us["topic_category"]) == ["Travel & Culture"]
+    assert march_us.iloc[0]["conversation_count"] == 2
+    assert march_us.iloc[0]["previous_period_count"] == 1
+    assert march_us.iloc[0]["growth_rate"] == 1
+    assert march_us.iloc[0]["trend_rank"] == 1

@@ -13,6 +13,7 @@ const NAV = [
   { to: "/sentiment", label: "Sentiment" },
   { to: "/wow", label: "Wow-Factor Insights" },
   { to: "/ask", label: "Ask the Dataset" },
+  { to: "/translations", label: "Translations" },
   { to: "/ai-insights", label: "AI Insights" },
 ];
 

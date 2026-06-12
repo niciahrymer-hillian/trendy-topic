@@ -14,8 +14,9 @@ import os
 import pandas as pd
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import insert
 
-from src import analysis as an, ask as ask_mod, data_access as da
+from src import analysis as an, ask as ask_mod, data_access as da, db as db_mod, translator as tr
 
 # Country centroids (lat, lng) so the globe can place + fly to each country.
 CENTROIDS = {
@@ -30,7 +31,7 @@ app = FastAPI(title="Trendy Topic API", version="1.0.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
-    allow_methods=["GET"],
+    allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
 
@@ -42,6 +43,49 @@ def _df() -> pd.DataFrame:
 
 def _records(df: pd.DataFrame) -> list[dict]:
     return df.to_dict(orient="records")
+
+
+def _summary_text(df: pd.DataFrame) -> pd.Series:
+    return df["assistant_response_summary"].fillna("").where(
+        df["assistant_response_summary"].notna() & (df["assistant_response_summary"] != ""),
+        df["sample_user_prompt_cleaned"].fillna(""),
+    )
+
+
+def _store_translation(
+    *,
+    conversation_id: str,
+    source_language: str,
+    target_language: str,
+    source_text: str,
+    translated_text: str,
+    provider: str,
+) -> bool:
+    if not os.getenv("DATABASE_URL"):
+        return False
+
+    try:
+        engine = db_mod.get_engine()
+    except Exception:
+        return False
+
+    try:
+        with engine.begin() as conn:
+            conn.execute(
+                insert(db_mod.translations),
+                {
+                    "conversation_id": conversation_id,
+                    "turn_id": None,
+                    "source_language": source_language,
+                    "target_language": target_language,
+                    "source_text": source_text,
+                    "translated_text": translated_text,
+                    "provider": provider,
+                },
+            )
+        return True
+    except Exception:
+        return False
 
 
 @app.get("/api/summary")
@@ -76,10 +120,34 @@ def country_detail(iso3: str) -> dict:
     }
 
 
+@app.get("/api/country-compare")
+def country_compare(countries: list[str] = Query(...)) -> dict:
+    unique = list(dict.fromkeys(countries))
+    if len(unique) < 2:
+        raise HTTPException(status_code=400, detail="Select at least two countries to compare.")
+
+    bundle = an.country_comparison_bundle(_df(), unique)
+    if bundle["volume"].empty:
+        raise HTTPException(status_code=404, detail="No comparison data found for the selected countries.")
+
+    return {
+        "countries": unique,
+        "volume": _records(bundle["volume"]),
+        "topics": _records(bundle["topics"]),
+        "sentiment": _records(bundle["sentiment"]),
+        "languages": _records(bundle["languages"]),
+    }
+
+
 @app.get("/api/topics")
 def topics(by: str = Query("label", pattern="^(label|category)$")) -> list[dict]:
     column = "topic_category" if by == "category" else "topic_label"
     return _records(an.topic_counts(_df(), column))
+
+
+@app.get("/api/topic-hierarchy")
+def topic_hierarchy() -> list[dict]:
+    return _records(an.topic_hierarchy(_df()))
 
 
 @app.get("/api/topic/{label}")
@@ -116,6 +184,105 @@ def trends() -> list[dict]:
     df = _df()
     overall = df.groupby(["month", "topic_label"]).size().reset_index(name="conversations")
     return _records(overall.sort_values("month"))
+
+
+@app.get("/api/trend-metrics")
+def trend_metrics(
+    latest_only: bool = True,
+    limit: int = Query(40, ge=1, le=500),
+) -> list[dict]:
+    metrics = an.topic_trend_metrics(_df())
+    if metrics.empty:
+        return []
+    if latest_only:
+        latest = metrics["metric_date"].max()
+        metrics = metrics[metrics["metric_date"] == latest]
+    metrics = metrics.sort_values(
+        ["metric_date", "trend_rank", "conversation_count"],
+        ascending=[False, True, False],
+    ).head(limit)
+    return _records(metrics)
+
+
+@app.get("/api/translation-summaries")
+def translation_summaries(
+    language: str | None = None,
+    limit: int = Query(50, ge=1, le=500),
+) -> list[dict]:
+    df = _df().copy()
+    if language:
+        df = df[df["language"].str.lower() == language.lower()]
+    df["summary_text"] = _summary_text(df)
+    out = (
+        df[["record_id", "country", "language", "summary_text"]]
+        .rename(columns={"record_id": "conversation_id"})
+        .head(limit)
+    )
+    return _records(out)
+
+
+@app.post("/api/translate-summary")
+def translate_summary(conversation_id: str, target_language: str) -> dict:
+    df = _df().copy()
+    df["summary_text"] = _summary_text(df)
+    sub = df[df["record_id"].astype(str) == str(conversation_id)]
+    if sub.empty:
+        raise HTTPException(status_code=404, detail=f"No safe summary found for {conversation_id}")
+
+    row = sub.iloc[0]
+    source_language = str(row["language"])
+    original_text = str(row["summary_text"])
+    provider = "google_cloud_translate"
+
+    try:
+        english_text = tr.translate_to_english(
+            text=original_text,
+            source_language=source_language,
+            provider=provider,
+        )
+        local_text = tr.translate_from_english(
+            text=english_text,
+            target_language=target_language,
+            provider=provider,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Translation failed: {e}")
+
+    stored_rows = 0
+    if source_language.strip().lower() not in {"english", "en"}:
+        if _store_translation(
+            conversation_id=str(conversation_id),
+            source_language=source_language,
+            target_language="en",
+            source_text=original_text,
+            translated_text=english_text,
+            provider=provider,
+        ):
+            stored_rows += 1
+
+    if target_language.strip().lower() not in {"english", "en"}:
+        if _store_translation(
+            conversation_id=str(conversation_id),
+            source_language="en",
+            target_language=target_language,
+            source_text=english_text,
+            translated_text=local_text,
+            provider=provider,
+        ):
+            stored_rows += 1
+
+    return {
+        "conversation_id": str(conversation_id),
+        "country": str(row["country"]),
+        "source_language": source_language,
+        "target_language": target_language,
+        "original_text": original_text,
+        "english_text": english_text,
+        "local_text": local_text,
+        "stored": stored_rows > 0,
+        "stored_rows": stored_rows,
+        "provider": provider,
+    }
 
 
 @app.get("/api/heatmap")

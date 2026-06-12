@@ -5,6 +5,7 @@ import warnings
 import pytest
 from fastapi.testclient import TestClient
 
+import api.main as api_main
 from api.main import app
 
 client = TestClient(app)
@@ -35,10 +36,30 @@ def test_unknown_country_is_404():
     assert client.get("/api/country/XXX").status_code == 404
 
 
+def test_country_compare_returns_volume_topics_sentiment_and_languages():
+    body = client.get("/api/country-compare", params=[("countries", "Japan"), ("countries", "United States")]).json()
+    assert body["countries"] == ["Japan", "United States"]
+    assert isinstance(body["volume"], list) and body["volume"]
+    assert isinstance(body["topics"], list) and body["topics"]
+    assert isinstance(body["sentiment"], list) and body["sentiment"]
+    assert isinstance(body["languages"], list) and body["languages"]
+
+
+def test_country_compare_requires_at_least_two_countries():
+    resp = client.get("/api/country-compare", params={"countries": "Japan"})
+    assert resp.status_code == 400
+
+
 @pytest.mark.parametrize("by,expected", [("label", 12), ("category", 8)])
 def test_topics_by_param(by, expected):
     body = client.get(f"/api/topics?by={by}").json()
     assert len(body) == expected
+
+
+def test_topic_hierarchy_returns_category_and_subtopic_counts():
+    body = client.get("/api/topic-hierarchy").json()
+    assert isinstance(body, list) and body
+    assert {"topic_category", "topic_label", "conversations"} <= body[0].keys()
 
 
 def test_ask_endpoint_answers_country_question():
@@ -135,6 +156,59 @@ def test_trends_sorted_by_month():
     assert {"month", "topic_label", "conversations"} <= body[0].keys()
     months = [r["month"] for r in body]
     assert months == sorted(months)
+
+
+def test_trend_metrics_return_count_previous_growth_and_rank():
+    body = client.get("/api/trend-metrics").json()
+    assert isinstance(body, list) and body
+    assert {
+        "metric_date",
+        "country",
+        "language",
+        "topic_category",
+        "conversation_count",
+        "previous_period_count",
+        "growth_rate",
+        "trend_rank",
+    } <= body[0].keys()
+
+
+def test_trend_metrics_latest_only_can_be_disabled():
+    latest = client.get("/api/trend-metrics").json()
+    full = client.get("/api/trend-metrics?latest_only=false&limit=200").json()
+    assert len(full) >= len(latest)
+    assert len({row["metric_date"] for row in full}) >= 1
+
+
+# ---------------------------------------------------------------------------
+# /api/translation-summaries + /api/translate-summary
+# ---------------------------------------------------------------------------
+
+def test_translation_summaries_returns_selectable_safe_rows():
+    body = client.get("/api/translation-summaries?limit=5").json()
+    assert isinstance(body, list) and body
+    assert {"conversation_id", "country", "language", "summary_text"} <= body[0].keys()
+
+
+def test_translate_summary_returns_original_english_and_local(monkeypatch):
+    first = client.get("/api/translation-summaries?limit=1").json()[0]
+
+    monkeypatch.setattr(api_main.tr, "translate_to_english", lambda text, source_language, provider=None: f"EN::{text}")
+    monkeypatch.setattr(api_main.tr, "translate_from_english", lambda text, target_language, provider=None: f"{target_language}::{text}")
+
+    body = client.post(
+        "/api/translate-summary",
+        params={"conversation_id": first["conversation_id"], "target_language": "Japanese"},
+    ).json()
+    assert body["conversation_id"] == first["conversation_id"]
+    assert body["original_text"]
+    assert body["english_text"].startswith("EN::")
+    assert body["local_text"].startswith("Japanese::")
+
+
+def test_translate_summary_unknown_conversation_is_404():
+    resp = client.post("/api/translate-summary", params={"conversation_id": "does-not-exist", "target_language": "Spanish"})
+    assert resp.status_code == 404
 
 
 # ---------------------------------------------------------------------------
