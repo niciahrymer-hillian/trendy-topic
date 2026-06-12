@@ -14,12 +14,26 @@ export default function Topics() {
   const trends = useFetch(() => api.trends(), []);
   const trendMetrics = useFetch(() => api.trendMetrics(200, true), []);
   const [topic, setTopic] = useState<string>("");
+  const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
+  const [topicSearch, setTopicSearch] = useState<string>("");
+  const [seededSelection, setSeededSelection] = useState(false);
   const { set } = useJump();
   const chartTheme = useChartTheme();
 
   useEffect(() => {
     if (list.data && !topic) setTopic(list.data[0].topic_label!);
   }, [list.data, topic]);
+
+  useEffect(() => {
+    if (!list.data || seededSelection) return;
+    const topTopics = list.data
+      .filter((t) => t.topic_label)
+      .sort((a, b) => b.conversations - a.conversations)
+      .slice(0, 5)
+      .map((t) => t.topic_label!);
+    setSelectedTopics(topTopics);
+    setSeededSelection(true);
+  }, [list.data, seededSelection]);
 
   useEffect(() => {
     if (!list.data) return;
@@ -63,6 +77,63 @@ export default function Topics() {
       growth_rate: formatRate(row.growth_rate),
     }));
 
+  const selectableTopics = list.data
+    .filter((t) => t.topic_label)
+    .sort((a, b) => b.conversations - a.conversations)
+    .map((t) => t.topic_label!);
+
+  const filteredSelectableTopics = selectableTopics.filter((name) =>
+    name.toLowerCase().includes(topicSearch.trim().toLowerCase())
+  );
+
+  const selectedTrendRows = (trends.data ?? []).filter((row) => selectedTopics.includes(row.topic_label));
+
+  const trendSummaryRows = selectedTopics
+    .map((selectedTopic) => {
+      const points = selectedTrendRows
+        .filter((row) => row.topic_label === selectedTopic)
+        .sort((a, b) => a.month.localeCompare(b.month));
+
+      if (!points.length) {
+        return {
+          topic_label: selectedTopic,
+          start_month: "—",
+          start_conversations: 0,
+          latest_month: "—",
+          latest_conversations: 0,
+          change: 0,
+          change_pct: "n/a",
+          direction: "no data",
+        };
+      }
+
+      const first = points[0];
+      const latest = points[points.length - 1];
+      const delta = latest.conversations - first.conversations;
+      const pct =
+        first.conversations === 0
+          ? latest.conversations > 0
+            ? "new"
+            : "0.0%"
+          : `${((delta / first.conversations) * 100).toFixed(1)}%`;
+
+      return {
+        topic_label: selectedTopic,
+        start_month: first.month,
+        start_conversations: first.conversations,
+        latest_month: latest.month,
+        latest_conversations: latest.conversations,
+        change: delta,
+        change_pct: pct,
+        direction: delta > 0 ? "rising" : delta < 0 ? "falling" : "flat",
+      };
+    })
+    .sort((a, b) => b.change - a.change);
+
+  const updateSelectedTopics = (next: string[]) => {
+    setSelectedTopics(next);
+  };
+
   return (
     <div>
       <PageHeader title="Topic Explorer" subtitle="Where a topic is discussed and how it trends over time." />
@@ -72,6 +143,74 @@ export default function Topics() {
           {list.data.map((t) => <option key={t.topic_label} value={t.topic_label}>{t.topic_label}</option>)}
         </select>
       </div>
+
+      <Section title="Selected topics trend timeline">
+        <div className="controls topic-trend-controls">
+          <label htmlFor="topic-search">Find topics</label>
+          <input
+            id="topic-search"
+            type="text"
+            placeholder="Search topics"
+            value={topicSearch}
+            onChange={(e) => setTopicSearch(e.target.value)}
+          />
+          <span className="pill">{filteredSelectableTopics.length} shown</span>
+          <label htmlFor="topic-multi">Topics to compare</label>
+          <select
+            id="topic-multi"
+            multiple
+            size={Math.min(10, Math.max(5, filteredSelectableTopics.length))}
+            value={selectedTopics}
+            onChange={(e) => updateSelectedTopics(Array.from(e.target.selectedOptions, (opt) => opt.value))}
+          >
+            {filteredSelectableTopics.map((name) => (
+              <option key={name} value={name}>{name}</option>
+            ))}
+          </select>
+          <button
+            className="primary"
+            type="button"
+            onClick={() => updateSelectedTopics(selectableTopics.slice(0, 5))}
+          >
+            Select top 5
+          </button>
+          <button
+            className="primary"
+            type="button"
+            onClick={() => updateSelectedTopics([])}
+          >
+            Clear
+          </button>
+        </div>
+        {selectedTopics.length ? (
+          <>
+            <EChart
+              option={multiLineOption(
+                selectedTrendRows as unknown as Record<string, string | number>[],
+                "month",
+                "topic_label",
+                "conversations"
+              )}
+              height={420}
+            />
+            <Table
+              columns={[
+                "topic_label",
+                "start_month",
+                "start_conversations",
+                "latest_month",
+                "latest_conversations",
+                "change",
+                "change_pct",
+                "direction",
+              ]}
+              rows={trendSummaryRows}
+            />
+          </>
+        ) : (
+          <p className="state compact">Select at least one topic to render trend lines.</p>
+        )}
+      </Section>
 
       {detail.data && (
         <>
@@ -135,12 +274,6 @@ export default function Topics() {
             </Section>
           </div>
         </>
-      )}
-
-      {trends.data && (
-        <Section title="All topics over time">
-          <EChart option={multiLineOption(trends.data as unknown as Record<string, string | number>[], "month", "topic_label", "conversations")} height={420} />
-        </Section>
       )}
     </div>
   );

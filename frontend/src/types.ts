@@ -108,6 +108,48 @@ export interface TranslationSummary {
   summary_text: string;
 }
 
+export interface SimilarSummary {
+  conversation_id: string;
+  country: string;
+  language: string;
+  topic_label: string;
+  sentiment_label: string;
+  summary_text: string;
+  similarity_score: number;
+}
+
+export interface SimilarSummaryResponse {
+  selected: Omit<SimilarSummary, "similarity_score">;
+  similar: SimilarSummary[];
+}
+
+export interface CountryClusterCountry {
+  country: string;
+  iso3: string;
+  cluster_id: number;
+  dim1: number;
+  dim2: number;
+  conversations: number;
+  top_topics: string;
+  dominant_sentiment: string;
+  positive_pct: number;
+}
+
+export interface CountryClusterPattern {
+  cluster_id: number;
+  country_count: number;
+  countries: string[];
+  dominant_topics: string[];
+  dominant_sentiment: string;
+  dominant_sentiment_pct: number;
+  explanation: string;
+}
+
+export interface CountryClustersResponse {
+  countries: CountryClusterCountry[];
+  patterns: CountryClusterPattern[];
+}
+
 export interface TranslationResult {
   conversation_id: string;
   country: string;
