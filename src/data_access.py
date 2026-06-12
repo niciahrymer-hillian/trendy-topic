@@ -116,6 +116,15 @@ def _enrich(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def enrich(df: pd.DataFrame) -> pd.DataFrame:
+    """Public: normalize + enrich a raw WildChat-style frame.
+
+    Used by the ingestion pipeline (src/ingest.py) so any CSV/JSON/Parquet source
+    gets the same country/time/topic/sentiment/safety enrichment the CSV pack does.
+    """
+    return _enrich(df)
+
+
 @lru_cache(maxsize=1)
 def load_conversations(data_dir: str | None = None) -> pd.DataFrame:
     """Load + normalize + enrich the full sample pack (cached per path).
