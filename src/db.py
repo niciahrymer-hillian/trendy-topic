@@ -14,8 +14,9 @@ from __future__ import annotations
 import os
 
 from sqlalchemy import (
-    Boolean, Column, Date, DateTime, ForeignKey, Integer, JSON, MetaData, Numeric,
-    String, Table, Text, create_engine, func, insert, select,
+    Boolean, CheckConstraint, Column, Date, DateTime, ForeignKey, Integer, JSON,
+    MetaData, Numeric, String, Table, Text, UniqueConstraint, create_engine, func,
+    insert, select,
 )
 from sqlalchemy.engine import Engine
 
@@ -51,27 +52,108 @@ conversations = Table(
     Column("created_ingestion_at", DateTime, default=func.now()),
 )
 
+turns = Table(
+    "turns", metadata,
+    Column("turn_id", Integer, primary_key=True, autoincrement=True),
+    Column(
+        "conversation_id",
+        Text,
+        ForeignKey("conversations.conversation_id", ondelete="CASCADE"),
+        nullable=False,
+    ),
+    Column("turn_number", Integer, nullable=False),
+    Column("role", Text, nullable=False),
+    Column("original_text", Text),
+    Column("cleaned_text", Text),
+    Column("english_translation", Text),
+    Column("safe_for_dashboard", Boolean, default=True),
+    UniqueConstraint("conversation_id", "turn_number", name="uq_turns_conversation_turn_number"),
+)
+
+translations = Table(
+    "translations", metadata,
+    Column("translation_id", Integer, primary_key=True, autoincrement=True),
+    Column(
+        "conversation_id",
+        Text,
+        ForeignKey("conversations.conversation_id", ondelete="CASCADE"),
+        nullable=False,
+    ),
+    Column("turn_id", Integer, ForeignKey("turns.turn_id", ondelete="CASCADE")),
+    Column("source_language", Text, nullable=False),
+    Column("target_language", Text, nullable=False),
+    Column("source_text", Text, nullable=False),
+    Column("translated_text", Text, nullable=False),
+    Column("provider", Text),
+    Column("created_at", DateTime, default=func.now()),
+)
+
 topic_classifications = Table(
     "topic_classifications", metadata,
     Column("classification_id", Integer, primary_key=True, autoincrement=True),
-    Column("conversation_id", Text, ForeignKey("conversations.conversation_id")),
-    Column("topic_category", Text),
+    Column("conversation_id", Text, ForeignKey("conversations.conversation_id", ondelete="CASCADE")),
+    Column("topic_category", Text, nullable=False),
     Column("topic_subcategory", Text),
     Column("topic_confidence", Numeric),
     Column("classification_method", Text),
     Column("classification_model", Text),
     Column("classified_at", DateTime, default=func.now()),
+    CheckConstraint(
+        "topic_confidence IS NULL OR (topic_confidence >= 0 AND topic_confidence <= 1)",
+        name="ck_topic_confidence_range",
+    ),
 )
 
 sentiment_scores = Table(
     "sentiment_scores", metadata,
     Column("sentiment_id", Integer, primary_key=True, autoincrement=True),
-    Column("conversation_id", Text, ForeignKey("conversations.conversation_id")),
+    Column("conversation_id", Text, ForeignKey("conversations.conversation_id", ondelete="CASCADE")),
     Column("sentiment_label", Text),
     Column("sentiment_score", Numeric),
     Column("sentiment_method", Text),
     Column("sentiment_model", Text),
     Column("analyzed_at", DateTime, default=func.now()),
+    CheckConstraint(
+        "sentiment_score IS NULL OR (sentiment_score >= -1 AND sentiment_score <= 1)",
+        name="ck_sentiment_score_range",
+    ),
+)
+
+trend_metrics = Table(
+    "trend_metrics", metadata,
+    Column("trend_metric_id", Integer, primary_key=True, autoincrement=True),
+    Column("metric_date", Date, nullable=False),
+    Column("country_id", Integer, ForeignKey("countries.country_id"), nullable=False),
+    Column("language_code", Text),
+    Column("topic_category", Text, nullable=False),
+    Column("conversation_count", Integer, nullable=False, default=0),
+    Column("previous_period_count", Integer, nullable=False, default=0),
+    Column("growth_rate", Numeric),
+    Column("trend_rank", Integer),
+    CheckConstraint("conversation_count >= 0", name="ck_trend_conversation_count_non_negative"),
+    CheckConstraint("previous_period_count >= 0", name="ck_trend_previous_period_count_non_negative"),
+    UniqueConstraint(
+        "metric_date", "country_id", "language_code", "topic_category",
+        name="uq_trend_metrics_date_country_language_topic",
+    ),
+)
+
+question_patterns = Table(
+    "question_patterns", metadata,
+    Column("question_pattern_id", Integer, primary_key=True, autoincrement=True),
+    Column("normalized_question", Text, nullable=False),
+    Column("topic_category", Text),
+    Column("country_id", Integer, ForeignKey("countries.country_id"), nullable=False),
+    Column("language_code", Text),
+    Column("conversation_count", Integer, nullable=False, default=1),
+    Column("global_rank", Integer),
+    Column("country_rank", Integer),
+    Column("curiosity_score", Numeric),
+    CheckConstraint("conversation_count >= 0", name="ck_question_patterns_count_non_negative"),
+    UniqueConstraint(
+        "normalized_question", "country_id", "language_code",
+        name="uq_question_patterns_question_country_language",
+    ),
 )
 
 
@@ -85,6 +167,19 @@ ai_topic_extractions = Table(
     Column("key_insights", Text),
     Column("emerging_trends", Text),
     Column("wow_factor_insights", Text),
+    Column("created_at", DateTime, default=func.now()),
+)
+
+voice_briefs = Table(
+    "voice_briefs", metadata,
+    Column("voice_brief_id", Integer, primary_key=True, autoincrement=True),
+    Column("country_id", Integer, ForeignKey("countries.country_id"), nullable=False),
+    Column("topic_category", Text),
+    Column("language_code", Text),
+    Column("summary_text", Text, nullable=False),
+    Column("audio_file_path", Text),
+    Column("elevenlabs_voice_id", Text),
+    Column("source_extraction_id", Integer, ForeignKey("ai_topic_extractions.extraction_id", ondelete="SET NULL")),
     Column("created_at", DateTime, default=func.now()),
 )
 

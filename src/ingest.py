@@ -22,23 +22,20 @@ from pathlib import Path
 
 import pandas as pd
 
+from . import clean as cl
 from . import data_access as da
+from . import geo as geo_mod
 
 logger = logging.getLogger("ingest")
 
 # A row must have these to be useful downstream; everything else can be enriched/defaulted.
 REQUIRED_COLUMNS = ["record_id", "country", "timestamp_utc"]
 
-# Regions + default language for the seed countries (mirrors sql/03_seed_countries.sql).
-COUNTRY_META = {
-    "United States": ("USA", "North America", "en"),
-    "Canada": ("CAN", "North America", "en"),
-    "United Kingdom": ("GBR", "Europe", "en"),
-    "China": ("CHN", "Asia", "zh"),
-    "Russia": ("RUS", "Europe/Asia", "ru"),
-    "France": ("FRA", "Europe", "fr"),
-    "Brazil": ("BRA", "South America", "pt"),
-    "Japan": ("JPN", "Asia", "ja"),
+# Regions + default language for the seed countries — sourced from src/geo.py.
+# Kept here as a plain dict for fast lookup during record mapping.
+COUNTRY_META: dict[str, tuple[str | None, str | None, str | None]] = {
+    name: (info.iso3, info.region, info.default_language)
+    for name, info in geo_mod.COUNTRY_META.items()
 }
 
 
@@ -117,7 +114,7 @@ def to_db_records(enriched: pd.DataFrame, source_format: str) -> dict[str, list[
             "source_format": source_format,
             "model_name": r.get("model_family"),
             "language_code": r.get("language"),
-            "detected_language": None,
+            "detected_language": r.get("detected_language") or None,
             "created_at": created_at,
             "time_period_day": day,
             "time_period_month": month_date,
@@ -153,10 +150,11 @@ def to_db_records(enriched: pd.DataFrame, source_format: str) -> dict[str, list[
 
 
 def ingest_file(path: str | Path, limit: int | None = None) -> dict[str, list[dict]]:
-    """Full extract+transform: read → validate → enrich → schema-shaped records."""
+    """Full extract+transform: read → validate → clean → enrich → schema-shaped records."""
     df = read_source(path, limit=limit)
-    clean, _ = validate(df)
-    enriched = da.enrich(clean)
+    validated, _ = validate(df)
+    cleaned = cl.clean(validated)
+    enriched = da.enrich(cleaned)
     return to_db_records(enriched, source_format=Path(path).suffix.lower().lstrip("."))
 
 
