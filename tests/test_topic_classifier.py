@@ -1,5 +1,13 @@
 """Topic taxonomy mapping + keyword fallback."""
 
+from pathlib import Path
+import sys
+
+# Allow running this test file directly via `python tests/test_topic_classifier.py`.
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 from src import topic_classifier as tc
 
 

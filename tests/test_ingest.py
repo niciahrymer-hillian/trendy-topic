@@ -1,10 +1,17 @@
 """Ingestion pipeline: format router, validation, mapping, and DB load."""
 
 from datetime import date
+from pathlib import Path
+import sys
 
 import pandas as pd
 import pytest
 from sqlalchemy import create_engine, func, select
+
+# Allow running this test file directly via `python tests/test_ingest.py`.
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from src import db, ingest
 
@@ -30,6 +37,20 @@ def _raw_rows() -> pd.DataFrame:
 def csv_path(tmp_path):
     p = tmp_path / "wildchat_sample.csv"
     _raw_rows().to_csv(p, index=False)
+    return p
+
+
+@pytest.fixture
+def json_path(tmp_path):
+    p = tmp_path / "wildchat_sample.json"
+    _raw_rows().to_json(p, orient="records")
+    return p
+
+
+@pytest.fixture
+def parquet_path(tmp_path):
+    p = tmp_path / "wildchat_sample.parquet"
+    _raw_rows().to_parquet(p)
     return p
 
 
@@ -79,13 +100,22 @@ def test_validate_raises_when_required_column_absent():
 
 # --- mapping -----------------------------------------------------------------
 
-def test_ingest_file_maps_to_schema_records(csv_path):
-    records = ingest.ingest_file(csv_path)
+@pytest.mark.parametrize(
+    ("fixture_name", "expected_source_format"),
+    [
+        ("csv_path", "csv"),
+        ("json_path", "json"),
+        ("parquet_path", "parquet"),
+    ],
+)
+def test_ingest_file_maps_to_schema_records_by_format(request, fixture_name, expected_source_format):
+    source_path = request.getfixturevalue(fixture_name)
+    records = ingest.ingest_file(source_path)
     assert {"countries", "conversations", "topic_classifications", "sentiment_scores"} == records.keys()
     assert len(records["conversations"]) == 2
     conv = records["conversations"][0]
     assert conv["conversation_id"] == "R1"
-    assert conv["source_format"] == "csv"
+    assert conv["source_format"] == expected_source_format
 
 
 # --- DB load against in-memory SQLite (GAI-015) ------------------------------

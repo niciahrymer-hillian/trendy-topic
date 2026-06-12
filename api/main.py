@@ -11,12 +11,16 @@ from __future__ import annotations
 
 import os
 
+from pathlib import Path
+
 import pandas as pd
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import insert
 
 from src import analysis as an, ask as ask_mod, data_access as da, db as db_mod, translator as tr
+from src import voice_briefing as vb
 
 # Country centroids (lat, lng) so the globe can place + fly to each country.
 CENTROIDS = {
@@ -26,6 +30,11 @@ CENTROIDS = {
 }
 
 app = FastAPI(title="Trendy Topic API", version="1.0.0")
+
+# Serve generated audio files at /audio/<filename>
+_AUDIO_DIR = Path(__file__).resolve().parents[1] / "assets" / "audio"
+_AUDIO_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/audio", StaticFiles(directory=str(_AUDIO_DIR)), name="audio")
 
 # The Vite dev server runs on a different origin; allow it during development.
 app.add_middleware(
@@ -283,6 +292,72 @@ def translate_summary(conversation_id: str, target_language: str) -> dict:
         "stored_rows": stored_rows,
         "provider": provider,
     }
+
+
+@app.post("/api/voice-brief")
+def voice_brief(
+    country: str | None = None,
+    topic: str | None = None,
+    language: str | None = None,
+    briefing_language: str = "English",
+    voice_id: str | None = None,
+) -> dict:
+    """Build a voice briefing script, generate audio via ElevenLabs (or mock),
+    save to assets/audio, and optionally persist metadata to the DB."""
+    df = _df()
+    result = vb.run_voice_brief(
+        df,
+        country=country or None,
+        topic=topic or None,
+        language_filter=language or None,
+        briefing_language=briefing_language,
+        voice_id=voice_id or None,
+    )
+
+    if os.getenv("DATABASE_URL"):
+        try:
+            engine = db_mod.get_engine()
+            brief_id = db_mod.store_voice_brief(
+                engine,
+                country_name=country,
+                topic_category=topic,
+                language_code=language,
+                summary_text=result["script"],
+                audio_file_path=result["audio_filename"],
+                elevenlabs_voice_id=result["voice_id"],
+            )
+            result["voice_brief_id"] = brief_id
+        except Exception:
+            result["voice_brief_id"] = None
+    else:
+        result["voice_brief_id"] = None
+
+    return result
+
+
+@app.get("/api/voice-briefs")
+def list_voice_briefs(limit: int = Query(20, ge=1, le=100)) -> list[dict]:
+    """Return past voice briefs from the DB (requires DATABASE_URL)."""
+    if not os.getenv("DATABASE_URL"):
+        return []
+    try:
+        from sqlalchemy import select as sa_select, desc
+        engine = db_mod.get_engine()
+        with engine.connect() as conn:
+            rows = conn.execute(
+                sa_select(
+                    db_mod.voice_briefs.c.voice_brief_id,
+                    db_mod.voice_briefs.c.topic_category,
+                    db_mod.voice_briefs.c.language_code,
+                    db_mod.voice_briefs.c.summary_text,
+                    db_mod.voice_briefs.c.audio_file_path,
+                    db_mod.voice_briefs.c.elevenlabs_voice_id,
+                    db_mod.voice_briefs.c.created_at,
+                ).order_by(desc(db_mod.voice_briefs.c.created_at)).limit(limit)
+            ).mappings().all()
+        return [dict(r) for r in rows]
+    except Exception:
+        return []
 
 
 @app.get("/api/heatmap")

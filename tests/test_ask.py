@@ -1,5 +1,13 @@
 """Natural-language query layer."""
 
+from pathlib import Path
+import sys
+
+# Allow running this test file directly via `python tests/test_ask.py`.
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 from src import ask
 
 
