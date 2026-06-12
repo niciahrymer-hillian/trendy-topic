@@ -27,6 +27,25 @@ so they don't get lost.
 - **Clicking it navigates to `/ask`** (Ask the Dataset).
 - Reuse the same mascot as #3.
 
+## 5. AI bot speaks its responses (voice output)
+- The Ask the Dataset bot should **speak its answer aloud** in addition to showing text.
+- Free default: browser **Web Speech API** (`window.speechSynthesis`) — no key, client-side.
+- Optional upgrade: **ElevenLabs** (`src/voice_briefing.synthesize`, key-gated) for nicer voice.
+- Add a speaker on/off toggle; only the safe aggregate answer is voiced.
+
+## 6. Consolidate charts / graphs / pages
+- Trim redundancy for a smoother, more efficient UX:
+  - Same chart repeats across pages (topic bars on Overview/Country/Topic Explorer,
+    sentiment pies, heatmaps on Wow + Language).
+  - Reduce the page count, dedupe charts, and tighten the sidebar nav.
+- Goal: fewer, higher-signal views; less scrolling; clearer flow.
+
+## Design reference
+- `docs/design/globe_lights_and_robot_reference.png` — the user's mockup showing the
+  dark-mode glowing-lights globe (item 1) and the blue robot mascot (items 3, 4).
+- Note: the robot in the reference sits on a background; for the mascot we still need a
+  transparent cutout PNG in `frontend/public/`, or rebuild it as an SVG/CSS robot.
+
 ## Open dependency
 - The robot image isn't in the repo yet. Either:
   - drop the PNG into `frontend/public/robot.png`, or
