@@ -148,9 +148,23 @@ def country_compare(countries: list[str] = Query(...)) -> dict:
 
 
 @app.get("/api/topics")
-def topics(by: str = Query("label", pattern="^(label|category)$")) -> list[dict]:
+def topics(
+    by: str = Query("label", pattern="^(label|category)$"),
+    country: str | None = None,
+    language: str | None = None,
+) -> list[dict]:
+    """Topic counts, optionally filtered by country and/or language.
+
+    The optional filters power the Dynamic Topic Cloud (GAI-049); with no filters
+    this returns the global counts every other caller expects.
+    """
+    df = _df()
+    if country:
+        df = df[df["country"] == country]
+    if language:
+        df = df[df["language"] == language]
     column = "topic_category" if by == "category" else "topic_label"
-    return _records(an.topic_counts(_df(), column))
+    return _records(an.topic_counts(df, column))
 
 
 @app.get("/api/topic-hierarchy")
