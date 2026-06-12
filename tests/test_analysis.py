@@ -61,3 +61,42 @@ def test_country_profiles_one_row_per_country_with_globe_fields(enriched_df):
     us = profiles[profiles["country"] == "United States"].iloc[0]
     assert us["conversations"] == 2
     assert 0 <= us["positive_pct"] <= 100
+
+
+def test_country_comparison_subset(enriched_df):
+    result = an.country_comparison(enriched_df, ["United States"])
+    assert set(result.columns) == {"country", "topic_label", "conversations"}
+    assert (result["country"] == "United States").all()
+
+
+def test_country_comparison_multiple_countries(enriched_df):
+    result = an.country_comparison(enriched_df, ["United States", "Japan"])
+    countries_in_result = set(result["country"].unique())
+    assert "United States" in countries_in_result
+    assert "Japan" in countries_in_result
+
+
+def test_country_comparison_unknown_country_returns_empty(enriched_df):
+    result = an.country_comparison(enriched_df, ["Atlantis"])
+    assert len(result) == 0
+
+
+def test_topic_counts_by_category(enriched_df):
+    counts = an.topic_counts(enriched_df, column="topic_category")
+    assert "topic_category" in counts.columns
+    assert counts["conversations"].is_monotonic_decreasing
+
+
+def test_trend_over_time_filtered_by_topic(enriched_df):
+    trend = an.trend_over_time(enriched_df, topic="Coding & Debugging")
+    assert "month" in trend.columns
+    assert "conversations" in trend.columns
+    # All returned rows must belong to the requested topic.
+    topic_sub = enriched_df[enriched_df["topic_label"] == "Coding & Debugging"]
+    assert trend["conversations"].sum() == len(topic_sub)
+
+
+def test_sentiment_breakdown_no_group(enriched_df):
+    result = an.sentiment_breakdown(enriched_df)
+    assert {"sentiment_label", "conversations"} <= set(result.columns)
+    assert result["conversations"].sum() == len(enriched_df)

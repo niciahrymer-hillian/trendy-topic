@@ -26,6 +26,8 @@ import pandas as pd
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 from . import topic_classifier as tc
+from . import geo
+from . import language_detector as ld
 
 # Repo root = two levels up from this file (src/data_access.py -> src -> root).
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -33,12 +35,6 @@ DATA_DIR = PROJECT_ROOT / "data" / "wildchat_country_csv_pack"
 
 # Display name cleanup: the pack labels the UK verbosely.
 COUNTRY_CANONICAL = {"Great Britain / United Kingdom": "United Kingdom"}
-
-# ISO alpha-2 -> alpha-3 for the 8 pack countries (Plotly maps want ISO-3).
-ISO2_TO_ISO3 = {
-    "US": "USA", "CA": "CAN", "GB": "GBR", "CN": "CHN",
-    "RU": "RUS", "FR": "FRA", "BR": "BRA", "JP": "JPN",
-}
 
 _analyzer = SentimentIntensityAnalyzer()
 
@@ -83,9 +79,9 @@ def _load_raw(data_dir: Path) -> pd.DataFrame:
 def _enrich(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
 
-    # Normalize country display name; add ISO-3 for choropleth maps.
+    # Normalize country display name; add iso3 + region for geospatial analysis.
     df["country"] = df["country"].replace(COUNTRY_CANONICAL)
-    df["iso3"] = df["iso2"].map(ISO2_TO_ISO3)
+    df = geo.enrich_geo(df)
 
     # Booleans.
     df["toxic"] = _to_bool(df["toxic"])
@@ -112,6 +108,9 @@ def _enrich(df: pd.DataFrame) -> pd.DataFrame:
     sent = text.map(_sentiment)
     df["sentiment_label"] = sent.map(lambda t: t[0])
     df["sentiment_score"] = sent.map(lambda t: t[1])
+
+    # Language detection for missing / uncertain values.
+    df = ld.apply_language_detection(df)
 
     return df
 
