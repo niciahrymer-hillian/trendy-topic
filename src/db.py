@@ -14,7 +14,7 @@ from __future__ import annotations
 import os
 
 from sqlalchemy import (
-    Boolean, Column, Date, DateTime, ForeignKey, Integer, MetaData, Numeric,
+    Boolean, Column, Date, DateTime, ForeignKey, Integer, JSON, MetaData, Numeric,
     String, Table, Text, create_engine, func, insert, select,
 )
 from sqlalchemy.engine import Engine
@@ -72,6 +72,20 @@ sentiment_scores = Table(
     Column("sentiment_method", Text),
     Column("sentiment_model", Text),
     Column("analyzed_at", DateTime, default=func.now()),
+)
+
+
+ai_topic_extractions = Table(
+    "ai_topic_extractions", metadata,
+    Column("extraction_id", Integer, primary_key=True, autoincrement=True),
+    Column("extraction_name", Text),
+    Column("filter_description", Text),
+    Column("prompt_text", Text),
+    Column("top_topics", JSON),  # list of {topic, summary}; JSONB on Postgres
+    Column("key_insights", Text),
+    Column("emerging_trends", Text),
+    Column("wow_factor_insights", Text),
+    Column("created_at", DateTime, default=func.now()),
 )
 
 

@@ -9,6 +9,8 @@ Run:  uvicorn api.main:app --reload --port 8000
 
 from __future__ import annotations
 
+import os
+
 import pandas as pd
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -132,3 +134,31 @@ def language_topics() -> list[dict]:
 def ask(q: str = "") -> dict:
     answer, table = ask_mod.answer_question(_df(), q)
     return {"answer": answer, "table": _records(table) if table is not None else []}
+
+
+@app.post("/api/extract")
+def extract(
+    country: str | None = None,
+    topic: str | None = None,
+    language: str | None = None,
+    limit: int = 40,
+) -> dict:
+    """Summarize a safe subset of conversations with Groq and store the result.
+
+    Requires GROQ_API_KEY. If DATABASE_URL is set the result is persisted to
+    ai_topic_extractions; otherwise it is returned without storing.
+    """
+    from src import ai_extraction, db  # imported here so the rest of the API has no LLM dep
+
+    if not os.getenv("GROQ_API_KEY"):
+        raise HTTPException(status_code=503, detail="GROQ_API_KEY is not configured.")
+
+    engine = db.get_engine() if os.getenv("DATABASE_URL") else None
+    try:
+        return ai_extraction.run_extraction(
+            _df(), country=country, topic=topic, language=language, limit=limit, engine=engine
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:  # Groq/network/parse failures
+        raise HTTPException(status_code=502, detail=f"Extraction failed: {e}")

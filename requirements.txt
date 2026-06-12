@@ -19,6 +19,10 @@ requests
 sqlalchemy
 psycopg[binary]
 
+# --- LLM (AI topic extraction) ---
+groq           # provider for the AI topic-extraction workflow
+pydantic       # validates the LLM's structured JSON output
+
 # --- Optional / future features ---
 elevenlabs     # voice briefings
 scikit-learn   # stretch: clustering / similarity

@@ -5,6 +5,7 @@ __pycache__/
 venv/
 .env
 .env.*
+!.env.example
 
 # Data files - keep large datasets out of GitHub
 data/raw/*
