@@ -3,6 +3,7 @@
 
 import ReactECharts from "echarts-for-react";
 import type { EChartsOption } from "echarts";
+import { applyChartTheme, useChartTheme } from "../charts";
 
 export default function EChart({
   option,
@@ -11,9 +12,10 @@ export default function EChart({
   option: EChartsOption;
   height?: number;
 }) {
+  const chartTheme = useChartTheme();
   return (
     <ReactECharts
-      option={option}
+      option={applyChartTheme(option, chartTheme)}
       style={{ height, width: "100%" }}
       notMerge
       lazyUpdate

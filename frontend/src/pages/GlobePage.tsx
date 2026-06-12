@@ -9,6 +9,8 @@ import { useEffect, useRef, useState } from "react";
 import type { EChartsOption } from "echarts";
 import Globe, { type GlobeMethods } from "react-globe.gl";
 import { api } from "../api";
+import { useChartTheme } from "../charts";
+import { useTheme } from "../theme";
 import { useFetch } from "../useFetch";
 import { useJump } from "../jump";
 import type { CountryProfile } from "../types";
@@ -21,9 +23,12 @@ const SENTIMENT_COLOR: Record<string, string> = {
   negative: "#ff7b72",
 };
 
-function tooltip(d: CountryProfile): string {
+function tooltip(d: CountryProfile, isDark: boolean): string {
+  const bg = isDark ? "rgba(15, 20, 25, 0.96)" : "rgba(255,255,255,0.97)";
+  const border = isDark ? "#2b3648" : "#b8cbe6";
+  const text = isDark ? "#e6edf3" : "#132034";
   return `
-  <div style="background:#0f1419;border:1px solid #2b3648;border-radius:8px;padding:10px 12px;color:#e6edf3;font-size:12px;max-width:240px">
+  <div style="background:${bg};border:1px solid ${border};border-radius:8px;padding:10px 12px;color:${text};font-size:12px;max-width:240px;box-shadow:0 10px 30px rgba(0,0,0,.2)">
     <div style="font-weight:700;margin-bottom:4px">${d.country}</div>
     <div>Conversations: <b>${d.conversations}</b></div>
     <div>Top language: ${d.top_language}</div>
@@ -35,6 +40,8 @@ function tooltip(d: CountryProfile): string {
 
 export default function GlobePage() {
   const { data, loading, error } = useFetch(() => api.countries(), []);
+  const { isDark } = useTheme();
+  const chartTheme = useChartTheme();
   const globeRef = useRef<GlobeMethods | undefined>(undefined);
   const wrapRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(800);
@@ -92,21 +99,28 @@ export default function GlobePage() {
           ref={globeRef}
           width={width}
           height={500}
-          backgroundColor="#060a10"
-          globeImageUrl="//unpkg.com/three-globe/example/img/earth-night.jpg"
+          backgroundColor="rgba(0,0,0,0)"
+          globeImageUrl={
+            isDark
+              ? "//unpkg.com/three-globe/example/img/earth-night.jpg"
+              : "//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
+          }
+          bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
+          atmosphereColor={isDark ? "#5db7ff" : "#1f7bff"}
+          atmosphereAltitude={0.19}
           pointsData={data}
           pointLat={(d) => (d as CountryProfile).lat}
           pointLng={(d) => (d as CountryProfile).lng}
-          pointAltitude={0.18}
-          pointRadius={0.7}
+          pointAltitude={0.22}
+          pointRadius={0.9}
           pointColor={(d) => SENTIMENT_COLOR[(d as CountryProfile).dominant_sentiment] ?? "#4aa8ff"}
-          pointLabel={(d) => tooltip(d as CountryProfile)}
+          pointLabel={(d) => tooltip(d as CountryProfile, isDark)}
           onPointClick={(d) => flyTo(d as CountryProfile)}
         />
       </div>
 
       {selected ? (
-        <CountryPanel iso3={selected.iso3} name={selected.country} />
+        <CountryPanel iso3={selected.iso3} name={selected.country} chartTheme={chartTheme} />
       ) : (
         <p className="state">Pick a country on the globe or from the sidebar to load its analytics.</p>
       )}
@@ -114,7 +128,15 @@ export default function GlobePage() {
   );
 }
 
-function CountryPanel({ iso3, name }: { iso3: string; name: string }) {
+function CountryPanel({
+  iso3,
+  name,
+  chartTheme,
+}: {
+  iso3: string;
+  name: string;
+  chartTheme: import("../charts").ChartTheme;
+}) {
   const { data, loading, error } = useFetch(() => api.country(iso3), [iso3]);
   if (loading) return <Loading />;
   if (error || !data) return <ErrorState message={error ?? "no data"} />;
@@ -124,11 +146,12 @@ function CountryPanel({ iso3, name }: { iso3: string; name: string }) {
     grid: { left: 140, right: 20, top: 10, bottom: 20 },
     xAxis: { type: "value" },
     yAxis: { type: "category", data: data.topics.map((t) => t.topic_label!).reverse() },
-    series: [{ type: "bar", data: data.topics.map((t) => t.conversations).reverse(), itemStyle: { color: "#4aa8ff" } }],
+    series: [{ type: "bar", data: data.topics.map((t) => t.conversations).reverse(), itemStyle: { color: chartTheme.accent } }],
   };
 
   const sentimentOption: EChartsOption = {
     tooltip: { trigger: "item" },
+    color: chartTheme.sentiment,
     series: [{
       type: "pie", radius: ["40%", "70%"],
       data: data.sentiment.map((s) => ({ name: s.sentiment_label, value: s.conversations })),

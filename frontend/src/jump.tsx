@@ -5,7 +5,7 @@
 // here via `useJump`, and the Sidebar renders it. Decoupling this way keeps the
 // Sidebar generic and lets each page decide what "jump to" means for its layout.
 
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 
 export interface JumpItem {
   label: string;
@@ -24,12 +24,13 @@ const JumpContext = createContext<JumpState | null>(null);
 export function JumpProvider({ children }: { children: ReactNode }) {
   const [title, setTitle] = useState("");
   const [items, setItems] = useState<JumpItem[]>([]);
-  const set = (t: string, i: JumpItem[]) => {
+  const set = useCallback((t: string, i: JumpItem[]) => {
     setTitle(t);
     setItems(i);
-  };
+  }, []);
+  const value = useMemo(() => ({ title, items, set }), [title, items, set]);
   return (
-    <JumpContext.Provider value={{ title, items, set }}>
+    <JumpContext.Provider value={value}>
       {children}
     </JumpContext.Provider>
   );

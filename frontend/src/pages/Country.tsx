@@ -8,6 +8,7 @@ import { useFetch } from "../useFetch";
 import { useJump } from "../jump";
 import { ErrorState, Loading, Metrics, PageHeader, Section, Table } from "../components/Ui";
 import EChart from "../components/EChart";
+import { useChartTheme } from "../charts";
 
 export default function Country() {
   const countries = useFetch(() => api.countries(), []);
@@ -50,15 +51,17 @@ export default function Country() {
 }
 
 function Detail({ data }: { data: import("../types").CountryDetail }) {
+  const chartTheme = useChartTheme();
   const topicBar: EChartsOption = {
     tooltip: {},
     grid: { left: 150, right: 20, top: 10, bottom: 30 },
     xAxis: { type: "value" },
     yAxis: { type: "category", data: data.topics.map((t) => t.topic_label!).reverse() },
-    series: [{ type: "bar", data: data.topics.map((t) => t.conversations).reverse(), itemStyle: { color: "#7c5cff" } }],
+    series: [{ type: "bar", data: data.topics.map((t) => t.conversations).reverse(), itemStyle: { color: chartTheme.accent2 } }],
   };
   const sentimentPie: EChartsOption = {
     tooltip: { trigger: "item" },
+    color: chartTheme.sentiment,
     series: [{ type: "pie", radius: ["40%", "70%"], data: data.sentiment.map((s) => ({ name: s.sentiment_label, value: s.conversations })) }],
   };
 

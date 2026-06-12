@@ -7,13 +7,14 @@ import { useFetch } from "../useFetch";
 import { useJump } from "../jump";
 import { ErrorState, Loading, Metrics, PageHeader, Section } from "../components/Ui";
 import EChart from "../components/EChart";
-import { hBarOption, multiLineOption } from "../charts";
+import { hBarOption, multiLineOption, useChartTheme } from "../charts";
 
 export default function Topics() {
   const list = useFetch(() => api.topics("label"), []);
   const trends = useFetch(() => api.trends(), []);
   const [topic, setTopic] = useState<string>("");
   const { set } = useJump();
+  const chartTheme = useChartTheme();
 
   useEffect(() => {
     if (list.data && !topic) setTopic(list.data[0].topic_label!);
@@ -51,7 +52,7 @@ export default function Topics() {
           ]} />
           <div className="grid-2">
             <Section title={`“${topic}” by country`}>
-              <EChart option={hBarOption(detail.data.by_country as unknown as Record<string, string | number>[], "country", "conversations", "#7c5cff")} />
+              <EChart option={hBarOption(detail.data.by_country as unknown as Record<string, string | number>[], "country", "conversations", chartTheme.accent2)} />
             </Section>
             <Section title={`“${topic}” over time`}>
               <EChart option={{
@@ -59,7 +60,7 @@ export default function Topics() {
                 grid: { top: 20, left: 44, right: 20, bottom: 40 },
                 xAxis: { type: "category", data: detail.data.trend.map((p) => p.month) },
                 yAxis: { type: "value" },
-                series: [{ type: "line", smooth: true, areaStyle: {}, data: detail.data.trend.map((p) => p.conversations), itemStyle: { color: "#4aa8ff" } }],
+                series: [{ type: "line", smooth: true, areaStyle: { color: chartTheme.accent }, data: detail.data.trend.map((p) => p.conversations), itemStyle: { color: chartTheme.accent }, lineStyle: { color: chartTheme.accent } }],
               }} />
             </Section>
           </div>
