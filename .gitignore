@@ -39,3 +39,13 @@ assets/audio/*
 .vscode/
 .idea/
 .claude/
+
+# Keep stray data CSV/JSON out of git by default (raw exports, generated files)…
+*.csv
+*.json
+# …but keep the tracked essentials: frontend config, the safe sample pack,
+# and the docs/kanban tables. (Negations must follow the ignore rules above.)
+!frontend/*.json
+!data/wildchat_country_csv_pack/*.csv
+!docs/*.csv
+!global_ai_conversation_analytics_kanban_cards.csv
