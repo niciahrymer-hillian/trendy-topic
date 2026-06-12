@@ -254,7 +254,7 @@ def translate_summary(conversation_id: str, target_language: str) -> dict:
     row = sub.iloc[0]
     source_language = str(row["language"])
     original_text = str(row["summary_text"])
-    provider = "google_cloud_translate"
+    provider = os.getenv("TRANSLATION_PROVIDER", "groq")
 
     try:
         english_text = tr.translate_to_english(
