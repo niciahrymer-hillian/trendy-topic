@@ -230,6 +230,24 @@ def translation_summaries(
     return _records(out)
 
 
+@app.get("/api/similar-summaries")
+def similar_summaries(
+    conversation_id: str,
+    limit: int = Query(8, ge=1, le=50),
+) -> dict:
+    try:
+        return an.similar_safe_summaries(_df(), conversation_id=conversation_id, limit=limit)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.get("/api/country-clusters")
+def country_clusters(
+    n_clusters: int = Query(3, ge=2, le=8),
+) -> dict:
+    return an.country_similarity_clusters(_df(), n_clusters=n_clusters)
+
+
 @app.post("/api/translate-summary")
 def translate_summary(conversation_id: str, target_language: str) -> dict:
     df = _df().copy()

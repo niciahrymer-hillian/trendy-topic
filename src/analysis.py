@@ -11,6 +11,14 @@ from __future__ import annotations
 import pandas as pd
 
 
+def _summary_text(df: pd.DataFrame) -> pd.Series:
+    """Prefer assistant summary text and fall back to cleaned prompt text."""
+    return df["assistant_response_summary"].fillna("").where(
+        df["assistant_response_summary"].notna() & (df["assistant_response_summary"] != ""),
+        df["sample_user_prompt_cleaned"].fillna(""),
+    )
+
+
 def global_summary(df: pd.DataFrame) -> dict:
     """Headline totals for the Global Overview cards."""
     return {
@@ -245,3 +253,169 @@ def country_profiles(df: pd.DataFrame, n_topics: int = 3) -> pd.DataFrame:
             "positive_pct": positive_pct,
         })
     return pd.DataFrame(rows).sort_values("country").reset_index(drop=True)
+
+
+def similar_safe_summaries(
+    df: pd.DataFrame,
+    conversation_id: str,
+    limit: int = 8,
+) -> dict[str, object]:
+    """Find summaries similar to a selected safe conversation using text embeddings."""
+    sub = df.copy()
+    sub["conversation_id"] = sub["record_id"].astype(str)
+    selected = sub[sub["conversation_id"] == str(conversation_id)]
+    if selected.empty:
+        raise ValueError(f"No safe summary found for conversation_id={conversation_id}")
+
+    texts = _summary_text(sub).fillna("").astype(str)
+
+    try:
+        from sklearn.feature_extraction.text import TfidfVectorizer
+        from sklearn.metrics.pairwise import cosine_similarity
+
+        matrix = TfidfVectorizer(ngram_range=(1, 2), stop_words="english").fit_transform(texts)
+        query_idx = selected.index[0]
+        sims = cosine_similarity(matrix[query_idx], matrix).ravel()
+    except Exception:
+        # Fallback: simple token-frequency embeddings + cosine similarity.
+        from collections import Counter
+        import numpy as np
+
+        tokenized = [str(t).lower().split() for t in texts]
+        vocab = sorted({tok for toks in tokenized for tok in toks})
+        if not vocab:
+            vocab = [""]
+        vocab_idx = {tok: i for i, tok in enumerate(vocab)}
+        matrix = np.zeros((len(tokenized), len(vocab)), dtype=float)
+        for i, toks in enumerate(tokenized):
+            counts = Counter(toks)
+            for tok, cnt in counts.items():
+                matrix[i, vocab_idx[tok]] = float(cnt)
+
+        query_idx = selected.index[0]
+        query = matrix[query_idx]
+        denom = (matrix * matrix).sum(axis=1) ** 0.5
+        qnorm = float((query * query).sum() ** 0.5)
+        sims = (matrix @ query) / ((denom * qnorm) + 1e-12)
+
+    ranked = sub.copy()
+    ranked["similarity_score"] = sims
+    ranked = ranked[ranked["conversation_id"] != str(conversation_id)]
+    ranked = ranked.sort_values("similarity_score", ascending=False).head(limit)
+    ranked["summary_text"] = _summary_text(ranked)
+
+    selected_row = selected.iloc[0]
+    selected_payload = {
+        "conversation_id": str(selected_row["conversation_id"]),
+        "country": str(selected_row["country"]),
+        "language": str(selected_row["language"]),
+        "topic_label": str(selected_row["topic_label"]),
+        "sentiment_label": str(selected_row["sentiment_label"]),
+        "summary_text": str(_summary_text(selected).iloc[0]),
+    }
+    return {
+        "selected": selected_payload,
+        "similar": ranked[
+            [
+                "conversation_id",
+                "country",
+                "language",
+                "topic_label",
+                "sentiment_label",
+                "summary_text",
+                "similarity_score",
+            ]
+        ]
+        .assign(similarity_score=lambda d: d["similarity_score"].round(4))
+        .to_dict(orient="records"),
+    }
+
+
+def country_similarity_clusters(df: pd.DataFrame, n_clusters: int = 3) -> dict[str, object]:
+    """Cluster countries by topic and sentiment composition and explain patterns."""
+    import numpy as np
+
+    countries = sorted(df["country"].unique().tolist())
+    if not countries:
+        return {"countries": [], "patterns": []}
+
+    topic_mix = (
+        df.groupby(["country", "topic_category"]).size().unstack(fill_value=0)
+    )
+    topic_mix = topic_mix.div(topic_mix.sum(axis=1), axis=0).fillna(0)
+
+    sentiment_mix = (
+        df.groupby(["country", "sentiment_label"]).size().unstack(fill_value=0)
+    )
+    sentiment_mix = sentiment_mix.div(sentiment_mix.sum(axis=1), axis=0).fillna(0)
+
+    features = topic_mix.join(sentiment_mix, how="outer").fillna(0)
+    features = features.reindex(countries).fillna(0)
+
+    k = min(max(2, n_clusters), len(countries)) if len(countries) > 1 else 1
+
+    try:
+        from sklearn.cluster import KMeans
+        from sklearn.decomposition import PCA
+
+        model = KMeans(n_clusters=k, n_init=20, random_state=42)
+        labels = model.fit_predict(features.values)
+        coords = PCA(n_components=2, random_state=42).fit_transform(features.values)
+    except Exception:
+        # Fallback: deterministic split by first feature and simple coordinates.
+        first = features.iloc[:, 0] if features.shape[1] else pd.Series(np.zeros(len(features)), index=features.index)
+        order = first.rank(method="first").astype(int) - 1
+        labels = (order * max(k, 1) // max(len(features), 1)).to_numpy()
+        coords = np.column_stack([
+            first.to_numpy(dtype=float),
+            np.zeros(len(features), dtype=float),
+        ])
+
+    country_stats = country_profiles(df)
+    cluster_df = pd.DataFrame({
+        "country": countries,
+        "cluster_id": labels.astype(int),
+        "dim1": coords[:, 0].round(4),
+        "dim2": coords[:, 1].round(4),
+    })
+    cluster_df = cluster_df.merge(country_stats, on="country", how="left")
+
+    patterns: list[dict[str, object]] = []
+    for cluster_id in sorted(cluster_df["cluster_id"].unique().tolist()):
+        members = cluster_df[cluster_df["cluster_id"] == cluster_id]["country"].tolist()
+        sub = df[df["country"].isin(members)]
+        top_topics = sub["topic_category"].value_counts().head(2).index.tolist()
+        sentiment = sub["sentiment_label"].value_counts(normalize=True)
+        dominant_sent = sentiment.index[0] if len(sentiment) else "unknown"
+        dominant_pct = round(float(sentiment.iloc[0] * 100), 1) if len(sentiment) else 0.0
+        topic_phrase = ", ".join(top_topics) if top_topics else "mixed topics"
+
+        patterns.append({
+            "cluster_id": int(cluster_id),
+            "country_count": len(members),
+            "countries": members,
+            "dominant_topics": top_topics,
+            "dominant_sentiment": dominant_sent,
+            "dominant_sentiment_pct": dominant_pct,
+            "explanation": (
+                f"Countries in this cluster lean toward {topic_phrase} and are mostly "
+                f"{dominant_sent} ({dominant_pct}%)."
+            ),
+        })
+
+    return {
+        "countries": cluster_df[
+            [
+                "country",
+                "iso3",
+                "cluster_id",
+                "dim1",
+                "dim2",
+                "conversations",
+                "top_topics",
+                "dominant_sentiment",
+                "positive_pct",
+            ]
+        ].sort_values(["cluster_id", "country"]).to_dict(orient="records"),
+        "patterns": patterns,
+    }

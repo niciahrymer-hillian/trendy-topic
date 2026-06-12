@@ -188,3 +188,29 @@ def test_topic_trend_metrics_rank_fastest_growth_first(enriched_df):
     assert march_us.iloc[0]["previous_period_count"] == 1
     assert march_us.iloc[0]["growth_rate"] == 1
     assert march_us.iloc[0]["trend_rank"] == 1
+
+
+def test_similar_safe_summaries_returns_ranked_matches(enriched_df):
+    df = enriched_df.copy()
+    df["record_id"] = ["U1", "U2", "J1", "J2"]
+    df["assistant_response_summary"] = [
+        "Explains the fix clearly.",
+        "Drafts a polite business email.",
+        "Outlines a travel plan.",
+        "Explains the fix clearly with coding steps.",
+    ]
+    result = an.similar_safe_summaries(df, conversation_id="U1", limit=2)
+
+    assert result["selected"]["conversation_id"] == "U1"
+    assert len(result["similar"]) == 2
+    assert result["similar"][0]["conversation_id"] == "J2"
+    assert result["similar"][0]["similarity_score"] >= result["similar"][1]["similarity_score"]
+
+
+def test_country_similarity_clusters_returns_countries_and_patterns(enriched_df):
+    clustered = an.country_similarity_clusters(enriched_df, n_clusters=2)
+    assert {"countries", "patterns"} == set(clustered.keys())
+    assert len(clustered["countries"]) == 2
+    assert len(clustered["patterns"]) >= 1
+    assert {"country", "cluster_id", "top_topics", "dominant_sentiment"} <= set(clustered["countries"][0].keys())
+    assert "explanation" in clustered["patterns"][0]
