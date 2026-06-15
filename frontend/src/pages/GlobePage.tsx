@@ -62,12 +62,11 @@ export default function GlobePage() {
 
   // Size the globe to its (now larger) container.
   useEffect(() => {
-    const measure = () => setWidth(wrapRef.current?.clientWidth ?? 900);
-    const measure = () => {
-      const nextWidth = wrapRef.current?.clientWidth ?? 800;
-      setWidth(nextWidth);
-      setHeight(nextWidth < 760 ? 430 : 540);
-    };
+  const measure = () => {
+  const nextWidth = wrapRef.current?.clientWidth ?? 800;
+  setWidth(nextWidth);
+  setHeight(nextWidth < 760 ? 430 : 540);
+};
     measure();
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
