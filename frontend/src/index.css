@@ -241,10 +241,57 @@ button.primary {
 .globe-wrap {
   display: flex;
   justify-content: center;
+  position: relative;
+  overflow: hidden;
   background: var(--globe-wrap-bg);
   border-radius: 12px;
   border: 1px solid var(--border);
   box-shadow: inset 0 0 70px var(--globe-wrap-glow), 0 12px 32px rgba(0, 0, 0, 0.14);
+}
+
+/* Larger globe block: taller, and breaks out slightly wider than the text columns. */
+.globe-wrap--large {
+  min-height: 640px;
+  margin: 0 -12px;
+}
+
+/* Fly-to flag: pops up and waves when the camera lands on a country. */
+.globe-flag {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: rgba(15, 20, 25, 0.72);
+  border: 1px solid var(--border);
+  color: #fff;
+  font-weight: 600;
+  backdrop-filter: blur(6px);
+  pointer-events: none;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  animation: flag-pop 0.5s ease-out;
+}
+.flag-emoji {
+  font-size: 40px;
+  line-height: 1;
+  display: inline-block;
+  transform-origin: center bottom;
+  animation: flag-wave 1.3s ease-in-out infinite;
+}
+@keyframes flag-pop {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(12px) scale(0.5); }
+  60%  { opacity: 1; transform: translateX(-50%) translateY(0) scale(1.12); }
+  100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+@keyframes flag-wave {
+  0%, 100% { transform: rotate(-3deg) skewX(0deg); }
+  25%      { transform: rotate(2deg) skewX(-8deg); }
+  50%      { transform: rotate(-2deg) skewX(5deg); }
+  75%      { transform: rotate(3deg) skewX(-4deg); }
 }
 .answer { background: var(--panel-2); border-left: 3px solid var(--accent); padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; }
 
