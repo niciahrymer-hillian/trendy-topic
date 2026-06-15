@@ -54,7 +54,9 @@ export default function GlobePage() {
   const wrapRef = useRef<HTMLDivElement>(null);
   const flagTimer = useRef<number | undefined>(undefined);
   const [width, setWidth] = useState(900);
+  const [height, setHeight] = useState(540);
   const [selected, setSelected] = useState<CountryProfile | null>(null);
+  const [hovered, setHovered] = useState<CountryProfile | null>(null);
   // The country we've finished flying to — drives the flag pop + glow ring.
   const [landed, setLanded] = useState<CountryProfile | null>(null);
   const [flagKey, setFlagKey] = useState(0);
