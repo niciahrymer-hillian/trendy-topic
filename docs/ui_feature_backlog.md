@@ -17,6 +17,12 @@ so they don't get lost.
 - Especially when clicking a country opens the insights panel — rework the GlobePage
   layout so the globe stays large alongside/above the detail panel.
 
+## 2b. Fly-to → country flag pop + wave animation
+- When the globe finishes flying to / lands on a country, **pop up that country's flag
+  with a waving animation** (CSS/SVG wave effect).
+- Flag derived from the country's `iso2` (flag emoji or a flag-image set, e.g. flagcdn).
+- Trigger on the `pointOfView` fly-to completion / country selection in `GlobePage.tsx`.
+
 ## 3. Animated robot mascot on "Ask the Dataset"
 - Add the little blue robot mascot to the Ask page.
 - Animate it: **moves around and blinks** throughout the interaction (idle + while thinking).
