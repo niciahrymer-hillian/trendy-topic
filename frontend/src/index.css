@@ -175,6 +175,7 @@ body {
   border-radius: 12px;
   padding: 20px;
   margin-bottom: 20px;
+  color: inherit;
 }
 .card h2 { margin: 0 0 14px; font-size: 16px; }
 
