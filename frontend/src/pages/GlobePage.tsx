@@ -63,6 +63,11 @@ export default function GlobePage() {
   // Size the globe to its (now larger) container.
   useEffect(() => {
     const measure = () => setWidth(wrapRef.current?.clientWidth ?? 900);
+    const measure = () => {
+      const nextWidth = wrapRef.current?.clientWidth ?? 800;
+      setWidth(nextWidth);
+      setHeight(nextWidth < 760 ? 430 : 540);
+    };
     measure();
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
@@ -108,6 +113,8 @@ export default function GlobePage() {
   if (loading) return <Loading />;
   if (error || !data) return <ErrorState message={error ?? "no data"} />;
 
+  const ringTargets: CountryProfile[] = selected ? [selected] : hovered ? [hovered] : [];
+
   return (
     <div>
       <PageHeader
@@ -115,11 +122,19 @@ export default function GlobePage() {
         subtitle="Drag to spin. Hover a country for its analytics; click to fly in — its flag waves on landing — and load details."
       />
 
-      <div className="globe-wrap globe-wrap--large" ref={wrapRef}>
-        <Globe
-          ref={globeRef}
-          width={width}
-          height={620}
+<div className="globe-wrap globe-wrap--large" ref={wrapRef}>
+  <div className="globe-hint">
+    Drag to spin • Scroll to zoom • Click a point to focus
+  </div>
+  <Globe
+    ref={globeRef}
+    width={width}
+    height={height}
+    rendererConfig={{
+      antialias: true,
+      alpha: true,
+      powerPreference: "high-performance",
+    }}
           backgroundColor="rgba(0,0,0,0)"
           globeImageUrl={
             isDark
@@ -130,13 +145,16 @@ export default function GlobePage() {
           showAtmosphere
           atmosphereColor={isDark ? "#5db7ff" : "#1f7bff"}
           atmosphereAltitude={isDark ? 0.3 : 0.2}
+          showGraticules
           pointsData={data}
           pointLat={(d) => (d as CountryProfile).lat}
           pointLng={(d) => (d as CountryProfile).lng}
-          pointAltitude={0.22}
-          pointRadius={0.9}
+          pointAltitude={0.24}
+          pointRadius={1.05}
+          pointResolution={18}
           pointColor={(d) => SENTIMENT_COLOR[(d as CountryProfile).dominant_sentiment] ?? "#4aa8ff"}
           pointLabel={(d) => tooltip(d as CountryProfile, isDark)}
+          onPointHover={(d) => setHovered((d as CountryProfile) ?? null)}
           onPointClick={(d) => flyTo(d as CountryProfile)}
           // Pulsing glow ring on the country we just landed on.
           ringsData={landed ? [landed] : []}

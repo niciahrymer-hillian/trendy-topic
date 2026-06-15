@@ -56,10 +56,33 @@ export function Table({ columns, rows }: { columns: string[]; rows: Record<strin
         </thead>
         <tbody>
           {rows.map((r, i) => (
-            <tr key={i}>{columns.map((c) => <td key={c}>{r[c]}</td>)}</tr>
+            <tr key={i}>
+              {columns.map((c) => {
+                const value = r[c];
+                return (
+                  <td key={c}>
+                    {isHttpUrl(value) ? (
+                      <a
+                        className="table-link"
+                        href={value}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Open
+                      </a>
+                    ) : (
+                      value
+                    )}
+                  </td>
+                );
+              })}
+            </tr>
           ))}
         </tbody>
       </table>
     </div>
   );
 }
+ 
+ const isHttpUrl = (value: unknown): value is string =>
+   typeof value === "string" && /^https?:\/\//i.test(value);

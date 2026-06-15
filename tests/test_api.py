@@ -318,6 +318,62 @@ def test_ask_country_alias_uk():
 
 
 # ---------------------------------------------------------------------------
+# /api/library-search
+# ---------------------------------------------------------------------------
+
+def test_library_search_returns_dewey_and_resource_groups(monkeypatch):
+    monkeypatch.setattr(
+        api_main.dls,
+        "search_library_resources",
+        lambda topic, max_results_each=5: {
+            "topic": topic,
+            "dewey": {
+                "number": "000",
+                "name": "Computer science, information & general works",
+                "alternatives": [],
+            },
+            "catalog_matches": [{"topic_label": "Coding & Debugging"}],
+            "books": [{"title": "Book 1"}],
+            "magazines": [{"title": "Magazine 1"}],
+            "articles": [{"title": "Article 1"}],
+            "warnings": [],
+        },
+    )
+
+    body = client.get("/api/library-search", params={"topic": "machine learning", "limit": 3}).json()
+    assert body["topic"] == "machine learning"
+    assert body["dewey"]["number"] == "000"
+    assert isinstance(body["catalog_matches"], list)
+    assert isinstance(body["books"], list)
+    assert isinstance(body["magazines"], list)
+    assert isinstance(body["articles"], list)
+
+
+def test_library_search_requires_topic_param():
+    resp = client.get("/api/library-search")
+    assert resp.status_code == 422
+
+
+def test_library_search_invalid_limit_is_422():
+    resp = client.get("/api/library-search", params={"topic": "history", "limit": 0})
+    assert resp.status_code == 422
+
+
+def test_library_taxonomy_returns_topics_and_categories():
+    body = client.get("/api/library-taxonomy").json()
+    assert {"topics", "categories"} <= body.keys()
+    assert isinstance(body["topics"], list) and body["topics"]
+    assert isinstance(body["categories"], list) and body["categories"]
+    assert {
+        "prompt_topic",
+        "topic_label",
+        "topic_category",
+        "dewey_number",
+        "dewey_name",
+    } <= body["topics"][0].keys()
+
+
+# ---------------------------------------------------------------------------
 # /api/extract  (no-key path; key path requires live Groq — not tested here)
 # ---------------------------------------------------------------------------
 
