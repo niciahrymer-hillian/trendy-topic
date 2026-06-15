@@ -23,16 +23,12 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import Response
 from sqlalchemy import insert
 
-<<<<<<< HEAD
 # Load .env so keys (GROQ_API_KEY, ELEVENLABS_API_KEY, DATABASE_URL, …) are picked up
 # automatically — your partner just fills in .env, no manual `source` needed.
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 from src import analysis as an, ask as ask_mod, data_access as da, db as db_mod, translator as tr
-=======
-from src import analysis as an, ask as ask_mod, data_access as da, db as db_mod
 from src import dewey_library_search as dls, translator as tr
->>>>>>> 1f4c9ef (Implemented Dewey Decimal Library system and search)
 from src import voice_briefing as vb
 
 # Country centroids (lat, lng) so the globe can place + fly to each country.

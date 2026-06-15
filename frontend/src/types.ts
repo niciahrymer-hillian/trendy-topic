@@ -208,13 +208,13 @@ export interface ExtractParams {
   limit?: number;
 }
 
-<<<<<<< HEAD
 export interface VoiceScript {
   script: string;
   country: string | null;
   topic: string | null;
   chars: number;
-=======
+}
+
 export interface DeweyTopicMapping {
   prompt_topic: string;
   topic_label: string;
@@ -258,5 +258,4 @@ export interface LibrarySearchResponse {
   magazines: LibraryResource[];
   articles: LibraryResource[];
   warnings: string[];
->>>>>>> 1f4c9ef (Implemented Dewey Decimal Library system and search)
 }

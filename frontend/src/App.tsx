@@ -10,11 +10,8 @@ import Wow from "./pages/Wow";
 import Ask from "./pages/Ask";
 import Translations from "./pages/Translations";
 import AIInsights from "./pages/AIInsights";
-<<<<<<< HEAD
 import VoiceStudio from "./pages/VoiceStudio";
-=======
 import LibrarySearch from "./pages/LibrarySearch";
->>>>>>> 1f4c9ef (Implemented Dewey Decimal Library system and search)
 
 export default function App() {
   return (
