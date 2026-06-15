@@ -13,6 +13,14 @@ import type {
   LanguageCount,
   LanguageTopicCell,
   CountryClustersResponse,
+  DeweyPromptSearchResponse,
+  DeweyIndexJobStatus,
+  DeweyIndexJobsResponse,
+  DeweyIndexRunResponse,
+  DeweyTaxonomyOverview,
+  DeweyTaxonomyClass,
+  DeweyTaxonomyDetailed,
+  DeweyTaxonomySearchResult,
   LibrarySearchResponse,
   LibraryTaxonomyResponse,
   SentimentCount,
@@ -49,6 +57,31 @@ async function post<T>(path: string): Promise<T> {
     throw new Error(detail);
   }
   return (await res.json()) as T;
+}
+
+async function getWithHeaders<T>(path: string, headers: HeadersInit): Promise<T> {
+  const res = await fetch(path, { headers });
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText} for ${path}`);
+  return (await res.json()) as T;
+}
+
+async function postWithHeaders<T>(path: string, headers: HeadersInit): Promise<T> {
+  const res = await fetch(path, { method: "POST", headers });
+  if (!res.ok) {
+    let detail = `${res.status} ${res.statusText}`;
+    try {
+      const body = await res.json();
+      if (body?.detail) detail = body.detail;
+    } catch {
+      /* non-JSON error body */
+    }
+    throw new Error(detail);
+  }
+  return (await res.json()) as T;
+}
+
+function adminHeaders(token?: string): HeadersInit {
+  return token ? { "x-admin-token": token } : {};
 }
 
 export const api = {
@@ -94,6 +127,55 @@ export const api = {
       `/api/library-search?topic=${encodeURIComponent(topic)}&limit=${limit}`
     ),
   libraryTaxonomy: () => get<LibraryTaxonomyResponse>("/api/library-taxonomy"),
+  deweyPrompts: (params: { dewey?: string; q?: string; limit?: number; offset?: number } = {}) => {
+    const q = new URLSearchParams();
+    if (params.dewey) q.set("dewey", params.dewey);
+    if (params.q) q.set("q", params.q);
+    q.set("limit", String(params.limit ?? 100));
+    q.set("offset", String(params.offset ?? 0));
+    return get<DeweyPromptSearchResponse>(`/api/dewey-prompts?${q.toString()}`);
+  },
+  deweyIndexJobs: (token?: string, limit = 25) =>
+    getWithHeaders<DeweyIndexJobsResponse>(`/api/admin/dewey-index/jobs?limit=${limit}`, adminHeaders(token)),
+  deweyIndexJob: (jobId: string, token?: string) =>
+    getWithHeaders<DeweyIndexJobStatus>(`/api/admin/dewey-index/jobs/${encodeURIComponent(jobId)}`, adminHeaders(token)),
+  startDeweyIndexJob: (
+    params: {
+      dataset?: string;
+      split?: string;
+      config?: string;
+      limit?: number;
+      outCsv?: string;
+      toDb?: boolean;
+      replaceDb?: boolean;
+      checkpointPath?: string;
+      resume?: boolean;
+      batchSize?: number;
+      checkpointEvery?: number;
+      replaceOutput?: boolean;
+    },
+    token?: string,
+  ) => {
+    const q = new URLSearchParams();
+    if (params.dataset) q.set("dataset", params.dataset);
+    if (params.split) q.set("split", params.split);
+    if (params.config) q.set("config", params.config);
+    if (params.limit) q.set("limit", String(params.limit));
+    if (params.outCsv) q.set("out_csv", params.outCsv);
+    if (params.toDb) q.set("to_db", "true");
+    if (params.replaceDb) q.set("replace_db", "true");
+    if (params.checkpointPath) q.set("checkpoint_path", params.checkpointPath);
+    if (params.resume) q.set("resume", "true");
+    if (params.batchSize) q.set("batch_size", String(params.batchSize));
+    if (params.checkpointEvery) q.set("checkpoint_every", String(params.checkpointEvery));
+    if (params.replaceOutput) q.set("replace_output", "true");
+    return postWithHeaders<DeweyIndexRunResponse>(`/api/admin/dewey-index/run?${q.toString()}`, adminHeaders(token));
+  },
+  cancelDeweyIndexJob: (jobId: string, token?: string) =>
+    postWithHeaders<{ job_id: string; status: string; cancel_requested: boolean; message: string }>(
+      `/api/admin/dewey-index/jobs/${encodeURIComponent(jobId)}/cancel`,
+      adminHeaders(token)
+    ),
   extract: (p: ExtractParams) => {
     const q = new URLSearchParams();
     if (p.country) q.set("country", p.country);
@@ -127,4 +209,15 @@ export const api = {
     }
     return res.blob();
   },
+  deweyTaxonomyOverview: () => get<DeweyTaxonomyOverview>("/api/dewey-taxonomy/overview"),
+  deweyTaxonomyClass: (classId: string) =>
+    get<DeweyTaxonomyClass>(`/api/dewey-taxonomy/${encodeURIComponent(classId)}`),
+  deweyTaxonomyDetailed: (classId: string) =>
+    get<DeweyTaxonomyDetailed>(
+      `/api/dewey-taxonomy/${encodeURIComponent(classId)}/detailed`
+    ),
+  deweyTaxonomySearch: (query: string) =>
+    get<DeweyTaxonomySearchResult[]>(
+      `/api/dewey-taxonomy/search?q=${encodeURIComponent(query)}`
+    ),
 };

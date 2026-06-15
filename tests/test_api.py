@@ -373,11 +373,42 @@ def test_library_taxonomy_returns_topics_and_categories():
     } <= body["topics"][0].keys()
 
 
-    def test_dewey_prompts_endpoint_returns_rows_with_paging(monkeypatch):
-        monkeypatch.setattr(
-            api_main.dpi,
-            "search_index",
-            lambda dewey_prefix, query, limit, offset: [
+def test_dewey_taxonomy_overview_returns_all_main_classes():
+    body = client.get("/api/dewey-taxonomy/overview").json()
+    assert isinstance(body, dict)
+    assert {"000", "300", "500", "600", "900"} <= set(body.keys())
+    assert "name" in body["300"]
+    assert "divisions" in body["300"]
+
+
+def test_dewey_taxonomy_search_returns_matches_and_uses_static_route():
+    resp = client.get("/api/dewey-taxonomy/search", params={"q": "economics"})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert isinstance(body, list)
+    assert any("economics" in item["name"].lower() for item in body)
+
+
+def test_dewey_taxonomy_detailed_available_for_all_main_classes():
+    for class_id in ("000", "100", "200", "300", "400", "500", "600", "700", "800", "900"):
+        resp = client.get(f"/api/dewey-taxonomy/{class_id}/detailed")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "name" in body
+        assert "full_breakdown" in body
+
+
+def test_dewey_taxonomy_detailed_unavailable_class_returns_404():
+    resp = client.get("/api/dewey-taxonomy/450/detailed")
+    assert resp.status_code == 404
+
+
+def test_dewey_prompts_endpoint_returns_rows_with_paging_and_total(monkeypatch):
+    monkeypatch.setattr(
+        api_main.dpi,
+        "search_index_page",
+        lambda dewey_prefix, query, limit, offset: {
+            "rows": [
                 {
                     "prompt_id": "abc",
                     "prompt_text": "Debug Python code",
@@ -385,15 +416,131 @@ def test_library_taxonomy_returns_topics_and_categories():
                     "dewey_name": "Computer science, information & general works",
                 }
             ],
-        )
+            "total_count": 123,
+        },
+    )
 
-        body = client.get("/api/dewey-prompts", params={"dewey": "000", "q": "python", "limit": 25, "offset": 0}).json()
-        assert body["dewey"] == "000"
-        assert body["query"] == "python"
-        assert body["limit"] == 25
-        assert body["offset"] == 0
-        assert body["count"] == 1
-        assert body["rows"][0]["prompt_id"] == "abc"
+    body = client.get("/api/dewey-prompts", params={"dewey": "000", "q": "python", "limit": 25, "offset": 0}).json()
+    assert body["dewey"] == "000"
+    assert body["query"] == "python"
+    assert body["limit"] == 25
+    assert body["offset"] == 0
+    assert body["count"] == 1
+    assert body["total_count"] == 123
+    assert body["total_pages"] == 5
+    assert body["rows"][0]["prompt_id"] == "abc"
+
+
+def test_admin_dewey_index_run_and_status(monkeypatch):
+    monkeypatch.setenv("DEWEY_ADMIN_TOKEN", "secret")
+
+    monkeypatch.setattr(
+        api_main.dpi,
+        "run_hf_index_job",
+        lambda **kwargs: {
+            "indexed_rows": 10,
+            "processed_rows": 10,
+            "csv_path": kwargs.get("out_csv"),
+            "db_rows_loaded": 0,
+            "checkpoint_path": kwargs.get("checkpoint_path"),
+            "resumed_from": 0,
+        },
+    )
+
+    start = client.post(
+        "/api/admin/dewey-index/run",
+        params={"limit": 10, "resume": True},
+        headers={"x-admin-token": "secret"},
+    )
+    assert start.status_code == 200
+    body = start.json()
+    assert body["status"] == "queued"
+    job_id = body["job_id"]
+
+    import time
+    for _ in range(20):
+        status = client.get(f"/api/admin/dewey-index/jobs/{job_id}", headers={"x-admin-token": "secret"})
+        assert status.status_code == 200
+        if status.json()["status"] != "running":
+            break
+        time.sleep(0.01)
+
+    final = client.get(f"/api/admin/dewey-index/jobs/{job_id}", headers={"x-admin-token": "secret"}).json()
+    assert final["status"] in {"completed", "running"}
+
+
+def test_admin_dewey_index_requires_token_when_configured(monkeypatch):
+    monkeypatch.setenv("DEWEY_ADMIN_TOKEN", "secret")
+    resp = client.post("/api/admin/dewey-index/run", params={"limit": 1})
+    assert resp.status_code == 403
+
+
+def test_admin_dewey_index_cancel_requests_running_job(monkeypatch):
+    monkeypatch.setenv("DEWEY_ADMIN_TOKEN", "secret")
+    api_main.DEWEY_INDEX_JOBS["job-cancel"] = {
+        "job_id": "job-cancel",
+        "status": "running",
+        "params": {},
+        "result": None,
+        "error": None,
+        "cancel_requested": False,
+        "created_at": None,
+        "started_at": None,
+        "finished_at": None,
+    }
+
+    resp = client.post("/api/admin/dewey-index/jobs/job-cancel/cancel", headers={"x-admin-token": "secret"})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["status"] == "cancel_requested"
+    assert body["cancel_requested"] is True
+
+
+def test_admin_dewey_index_list_jobs(monkeypatch):
+    monkeypatch.setenv("DEWEY_ADMIN_TOKEN", "secret")
+    monkeypatch.setattr(api_main, "_list_jobs_from_db", lambda limit: [])
+    api_main.DEWEY_INDEX_JOBS["job-list"] = {
+        "job_id": "job-list",
+        "status": "completed",
+        "params": {},
+        "result": {"indexed_rows": 1},
+        "error": None,
+        "cancel_requested": False,
+        "created_at": None,
+        "started_at": None,
+        "finished_at": None,
+    }
+
+    resp = client.get("/api/admin/dewey-index/jobs", headers={"x-admin-token": "secret"})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["count"] >= 1
+    assert any(job["job_id"] == "job-list" for job in body["jobs"])
+
+
+def test_admin_dewey_index_status_falls_back_to_db(monkeypatch):
+    monkeypatch.setenv("DEWEY_ADMIN_TOKEN", "secret")
+    monkeypatch.setattr(
+        api_main,
+        "_load_job_from_db",
+        lambda job_id: {
+            "job_id": job_id,
+            "status": "completed",
+            "params": {},
+            "result": {"indexed_rows": 100},
+            "error": None,
+            "cancel_requested": False,
+            "created_at": None,
+            "started_at": None,
+            "finished_at": None,
+        },
+    )
+
+    resp = client.get("/api/admin/dewey-index/jobs/db-job", headers={"x-admin-token": "secret"})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["job_id"] == "db-job"
+    assert body["status"] == "completed"
 
 
 # ---------------------------------------------------------------------------

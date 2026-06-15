@@ -10,16 +10,19 @@ Run:  uvicorn api.main:app --reload --port 8000
 from __future__ import annotations
 
 import os
+import time
+import threading
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import BackgroundTasks, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import Response
-from sqlalchemy import insert
+from sqlalchemy import desc, insert, select, update
 
 # Load .env so keys (GROQ_API_KEY, ELEVENLABS_API_KEY, DATABASE_URL, …) are picked up
 # automatically — your partner just fills in .env, no manual `source` needed.
@@ -39,6 +42,8 @@ CENTROIDS = {
 }
 
 app = FastAPI(title="Trendy Topic API", version="1.0.0")
+DEWEY_INDEX_JOBS: dict[str, dict] = {}
+DEWEY_INDEX_CANCEL_FLAGS: dict[str, bool] = {}
 
 # Serve generated audio files at /audio/<filename>
 _AUDIO_DIR = Path(__file__).resolve().parents[1] / "assets" / "audio"
@@ -443,6 +448,52 @@ def library_taxonomy() -> dict:
     return dls.topic_taxonomy_catalog()
 
 
+@app.get("/api/dewey-taxonomy/overview")
+def dewey_taxonomy_overview() -> dict:
+    """Return all 10 main Dewey classes with their 10 divisions each."""
+    return dls.get_taxonomy_overview()
+
+
+@app.get("/api/dewey-taxonomy/search")
+def dewey_taxonomy_search(q: str = Query(..., min_length=1, max_length=100)) -> list[dict]:
+    """Search Dewey taxonomy by keyword.
+    
+    Returns matching classes and divisions. Example: 'economics', 'law', 'medicine'.
+    """
+    return dls.search_taxonomy(q)
+
+
+@app.get("/api/dewey-taxonomy/{class_id}")
+def dewey_taxonomy_class(class_id: str) -> dict:
+    """Return detailed breakdown for a specific Dewey class (e.g., '300' for Social Sciences).
+
+    Includes main class name and all 10 divisions with their number ranges and descriptions.
+    """
+    result = dls.get_taxonomy_class(class_id)
+    if not result:
+        raise HTTPException(status_code=404, detail=f"Dewey class {class_id} not found")
+    return result
+
+
+@app.get("/api/dewey-taxonomy/{class_id}/detailed")
+def dewey_taxonomy_detailed(class_id: str) -> dict:
+    """Return detailed section-level breakdown for a Dewey class.
+
+    Currently available for all 10 main Dewey classes:
+    000, 100, 200, 300, 400, 500, 600, 700, 800, and 900.
+    """
+    result = dls.get_taxonomy_detailed(class_id)
+    if not result:
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                f"Detailed breakdown for class {class_id} not available. "
+                "Try a main class code like '000', '100', ..., '900'."
+            )
+        )
+    return result
+
+
 @app.get("/api/dewey-prompts")
 def dewey_prompts(
     dewey: str | None = Query(None, min_length=1, max_length=8),
@@ -451,14 +502,370 @@ def dewey_prompts(
     offset: int = Query(0, ge=0),
 ) -> dict:
     """Search Dewey-indexed prompts from DB when configured, otherwise from CSV export."""
-    rows = dpi.search_index(dewey_prefix=dewey, query=q, limit=limit, offset=offset)
+    page = dpi.search_index_page(dewey_prefix=dewey, query=q, limit=limit, offset=offset)
+    rows = page["rows"]
+    total_count = int(page["total_count"])
     return {
         "dewey": dewey,
         "query": q,
         "limit": limit,
         "offset": offset,
         "count": len(rows),
+        "total_count": total_count,
+        "total_pages": (total_count + limit - 1) // limit if limit else 0,
         "rows": rows,
+    }
+
+
+def _assert_admin_token(x_admin_token: str | None) -> None:
+    required = os.getenv("DEWEY_ADMIN_TOKEN")
+    if required and x_admin_token != required:
+        raise HTTPException(status_code=403, detail="Invalid admin token")
+
+
+def _iso_or_none(value: object) -> str | None:
+    if isinstance(value, datetime):
+        return value.isoformat()
+    return None
+
+
+def _jobs_engine():
+    if not os.getenv("DATABASE_URL"):
+        return None
+    try:
+        return db_mod.get_engine()
+    except Exception:
+        return None
+
+
+def _persist_job_create(job_id: str, params: dict, *, status: str) -> None:
+    engine = _jobs_engine()
+    if engine is None:
+        return
+    db_mod.create_all(engine)
+    with engine.begin() as conn:
+        conn.execute(
+            insert(db_mod.dewey_index_jobs),
+            {
+                "job_id": job_id,
+                "status": status,
+                "params": params,
+                "result": None,
+                "error_text": None,
+                "cancel_requested": False,
+                "processed_rows": None,
+                "indexed_rows": None,
+                "total_rows_requested": params.get("limit"),
+                "progress_percent": 0,
+                "created_at": datetime.now(timezone.utc),
+                "started_at": None,
+                "finished_at": None,
+            },
+        )
+
+
+def _persist_job_update(job_id: str, **fields) -> None:
+    if job_id in DEWEY_INDEX_JOBS:
+        DEWEY_INDEX_JOBS[job_id].update(fields)
+    engine = _jobs_engine()
+    if engine is None:
+        return
+    db_mod.create_all(engine)
+    with engine.begin() as conn:
+        conn.execute(update(db_mod.dewey_index_jobs).where(db_mod.dewey_index_jobs.c.job_id == job_id).values(**fields))
+
+
+def _load_job_from_db(job_id: str) -> dict | None:
+    engine = _jobs_engine()
+    if engine is None:
+        return None
+    db_mod.create_all(engine)
+    with engine.begin() as conn:
+        row = conn.execute(
+            select(db_mod.dewey_index_jobs).where(db_mod.dewey_index_jobs.c.job_id == job_id)
+        ).mappings().first()
+    if not row:
+        return None
+    return {
+        "job_id": row["job_id"],
+        "status": row["status"],
+        "params": row.get("params") or {},
+        "result": row.get("result"),
+        "error": row.get("error_text"),
+        "cancel_requested": bool(row.get("cancel_requested", False)),
+        "processed_rows": row.get("processed_rows"),
+        "indexed_rows": row.get("indexed_rows"),
+        "total_rows_requested": row.get("total_rows_requested"),
+        "progress_percent": row.get("progress_percent"),
+        "created_at": _iso_or_none(row.get("created_at")),
+        "started_at": _iso_or_none(row.get("started_at")),
+        "finished_at": _iso_or_none(row.get("finished_at")),
+    }
+
+
+def _list_jobs_from_db(limit: int) -> list[dict]:
+    engine = _jobs_engine()
+    if engine is None:
+        return []
+    db_mod.create_all(engine)
+    with engine.begin() as conn:
+        rows = conn.execute(
+            select(db_mod.dewey_index_jobs)
+            .order_by(desc(db_mod.dewey_index_jobs.c.created_at))
+            .limit(limit)
+        ).mappings().all()
+    out: list[dict] = []
+    for row in rows:
+        out.append(
+            {
+                "job_id": row["job_id"],
+                "status": row["status"],
+                "params": row.get("params") or {},
+                "result": row.get("result"),
+                "error": row.get("error_text"),
+                "cancel_requested": bool(row.get("cancel_requested", False)),
+                "processed_rows": row.get("processed_rows"),
+                "indexed_rows": row.get("indexed_rows"),
+                "total_rows_requested": row.get("total_rows_requested"),
+                "progress_percent": row.get("progress_percent"),
+                "created_at": _iso_or_none(row.get("created_at")),
+                "started_at": _iso_or_none(row.get("started_at")),
+                "finished_at": _iso_or_none(row.get("finished_at")),
+            }
+        )
+    return out
+
+
+def _is_cancel_requested(job_id: str) -> bool:
+    if DEWEY_INDEX_CANCEL_FLAGS.get(job_id, False):
+        return True
+    db_job = _load_job_from_db(job_id)
+    if db_job:
+        return bool(db_job.get("cancel_requested", False))
+    return False
+
+
+def _job_progress_percent(indexed_rows: int | None, total_rows_requested: int | None) -> float | None:
+    if total_rows_requested and total_rows_requested > 0 and indexed_rows is not None:
+        return round(min(100.0, (indexed_rows * 100.0) / total_rows_requested), 2)
+    return None
+
+
+def _poll_checkpoint_progress(job_id: str, checkpoint_path: str, total_rows_requested: int | None, stop_event: threading.Event) -> None:
+    last_signature: tuple[int | None, int | None] | None = None
+    while not stop_event.is_set():
+        job = DEWEY_INDEX_JOBS.get(job_id) or _load_job_from_db(job_id)
+        if job and job.get("status") in {"completed", "failed", "canceled"}:
+            break
+
+        checkpoint = dpi.read_checkpoint_state(checkpoint_path)
+        processed_rows = checkpoint.get("processed_rows")
+        indexed_rows = checkpoint.get("indexed_rows")
+        signature = (processed_rows, indexed_rows)
+        if signature != last_signature:
+            progress_percent = _job_progress_percent(indexed_rows, total_rows_requested)
+            _persist_job_update(
+                job_id,
+                processed_rows=processed_rows,
+                indexed_rows=indexed_rows,
+                total_rows_requested=total_rows_requested,
+                progress_percent=progress_percent,
+            )
+            last_signature = signature
+        time.sleep(1.0)
+
+
+def _run_dewey_index_job(job_id: str, kwargs: dict) -> None:
+    now = datetime.now(timezone.utc).isoformat()
+    total_rows_requested = kwargs.get("limit")
+    DEWEY_INDEX_JOBS[job_id] = {
+        "job_id": job_id,
+        "status": "running",
+        "params": kwargs,
+        "result": None,
+        "error": None,
+        "cancel_requested": False,
+        "created_at": DEWEY_INDEX_JOBS.get(job_id, {}).get("created_at", now),
+        "started_at": now,
+        "finished_at": None,
+        "processed_rows": None,
+        "indexed_rows": None,
+        "total_rows_requested": total_rows_requested,
+        "progress_percent": 0,
+    }
+    _persist_job_update(
+        job_id,
+        status="running",
+        started_at=datetime.now(timezone.utc),
+        total_rows_requested=total_rows_requested,
+        progress_percent=0,
+    )
+
+    stop_event = threading.Event()
+    poller = threading.Thread(
+        target=_poll_checkpoint_progress,
+        args=(job_id, kwargs["checkpoint_path"], total_rows_requested, stop_event),
+        daemon=True,
+    )
+    poller.start()
+    try:
+        result = dpi.run_hf_index_job(
+            **kwargs,
+            should_cancel=lambda: _is_cancel_requested(job_id),
+            on_checkpoint=lambda state: _persist_job_update(
+                job_id,
+                processed_rows=state.get("processed_rows"),
+                indexed_rows=state.get("indexed_rows"),
+                total_rows_requested=state.get("limit") or total_rows_requested,
+                progress_percent=_job_progress_percent(state.get("indexed_rows"), state.get("limit") or total_rows_requested),
+            ),
+        )
+        terminal_status = "canceled" if result.get("canceled") else "completed"
+        progress_percent = _job_progress_percent(
+            int(result.get("indexed_rows") or 0),
+            total_rows_requested,
+        )
+        DEWEY_INDEX_JOBS[job_id]["status"] = terminal_status
+        DEWEY_INDEX_JOBS[job_id]["result"] = result
+        DEWEY_INDEX_JOBS[job_id]["finished_at"] = datetime.now(timezone.utc).isoformat()
+        _persist_job_update(
+            job_id,
+            status=terminal_status,
+            result=result,
+            finished_at=datetime.now(timezone.utc),
+            processed_rows=result.get("processed_rows"),
+            indexed_rows=result.get("indexed_rows"),
+            total_rows_requested=total_rows_requested,
+            progress_percent=progress_percent,
+        )
+    except Exception as exc:
+        DEWEY_INDEX_JOBS[job_id]["status"] = "failed"
+        DEWEY_INDEX_JOBS[job_id]["error"] = str(exc)
+        DEWEY_INDEX_JOBS[job_id]["finished_at"] = datetime.now(timezone.utc).isoformat()
+        _persist_job_update(
+            job_id,
+            status="failed",
+            error_text=str(exc),
+            finished_at=datetime.now(timezone.utc),
+            total_rows_requested=total_rows_requested,
+        )
+    finally:
+        stop_event.set()
+        poller.join(timeout=2.0)
+
+
+@app.post("/api/admin/dewey-index/run")
+def run_dewey_index(
+    background_tasks: BackgroundTasks,
+    dataset: str = Query("allenai/WildChat"),
+    split: str = Query("train"),
+    config: str | None = Query(None),
+    limit: int | None = Query(None, ge=1),
+    out_csv: str | None = Query(str(dpi.DEFAULT_EXPORT_PATH)),
+    to_db: bool = Query(False),
+    replace_db: bool = Query(False),
+    checkpoint_path: str = Query(str(dpi.DEFAULT_CHECKPOINT_PATH)),
+    resume: bool = Query(False),
+    batch_size: int = Query(2000, ge=100, le=50000),
+    checkpoint_every: int = Query(5000, ge=100, le=500000),
+    replace_output: bool = Query(False),
+    x_admin_token: str | None = Header(None),
+) -> dict:
+    """Trigger a Dewey indexing run in the background (supports resume)."""
+    _assert_admin_token(x_admin_token)
+
+    job_id = uuid.uuid4().hex
+    kwargs = {
+        "dataset_name": dataset,
+        "split": split,
+        "config_name": config,
+        "limit": limit,
+        "out_csv": out_csv if out_csv else None,
+        "to_db": to_db,
+        "replace_db": replace_db,
+        "checkpoint_path": checkpoint_path,
+        "resume": resume,
+        "batch_size": batch_size,
+        "checkpoint_every": checkpoint_every,
+        "replace_output": replace_output,
+    }
+
+    created_at = datetime.now(timezone.utc).isoformat()
+    DEWEY_INDEX_JOBS[job_id] = {
+        "job_id": job_id,
+        "status": "queued",
+        "params": kwargs,
+        "result": None,
+        "error": None,
+        "cancel_requested": False,
+        "created_at": created_at,
+        "started_at": None,
+        "finished_at": None,
+    }
+    _persist_job_create(job_id, kwargs, status="queued")
+
+    # Use both BackgroundTasks and a daemon thread so long-running jobs are detached.
+    background_tasks.add_task(lambda: None)
+    threading.Thread(target=_run_dewey_index_job, args=(job_id, kwargs), daemon=True).start()
+
+    return {
+        "job_id": job_id,
+        "status": "queued",
+        "message": "Dewey indexing job started",
+    }
+
+
+@app.get("/api/admin/dewey-index/jobs")
+def list_dewey_index_jobs(
+    limit: int = Query(50, ge=1, le=500),
+    x_admin_token: str | None = Header(None),
+) -> dict:
+    """List recent dewey indexing jobs, persisted when DATABASE_URL is configured."""
+    _assert_admin_token(x_admin_token)
+    rows = _list_jobs_from_db(limit)
+    if not rows:
+        rows = list(DEWEY_INDEX_JOBS.values())[:limit]
+    return {"count": len(rows), "jobs": rows}
+
+
+@app.get("/api/admin/dewey-index/jobs/{job_id}")
+def dewey_index_job_status(job_id: str, x_admin_token: str | None = Header(None)) -> dict:
+    """Get status/result for a previously triggered Dewey indexing job."""
+    _assert_admin_token(x_admin_token)
+    job = DEWEY_INDEX_JOBS.get(job_id)
+    if not job:
+        job = _load_job_from_db(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=f"Unknown job_id {job_id}")
+    return job
+
+
+@app.post("/api/admin/dewey-index/jobs/{job_id}/cancel")
+def cancel_dewey_index_job(job_id: str, x_admin_token: str | None = Header(None)) -> dict:
+    """Request cancellation for a running/queued dewey indexing job."""
+    _assert_admin_token(x_admin_token)
+    job = DEWEY_INDEX_JOBS.get(job_id) or _load_job_from_db(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=f"Unknown job_id {job_id}")
+
+    if job.get("status") in {"completed", "failed", "canceled"}:
+        return {
+            "job_id": job_id,
+            "status": job.get("status"),
+            "cancel_requested": bool(job.get("cancel_requested", False)),
+            "message": "Job is already in a terminal state",
+        }
+
+    DEWEY_INDEX_CANCEL_FLAGS[job_id] = True
+    if job_id in DEWEY_INDEX_JOBS:
+        DEWEY_INDEX_JOBS[job_id]["cancel_requested"] = True
+    _persist_job_update(job_id, cancel_requested=True)
+
+    return {
+        "job_id": job_id,
+        "status": "cancel_requested",
+        "cancel_requested": True,
+        "message": "Cancellation requested",
     }
 
 

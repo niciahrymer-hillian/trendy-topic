@@ -202,6 +202,23 @@ prompt_dewey_index = Table(
     UniqueConstraint("prompt_id", name="uq_prompt_dewey_index_prompt_id"),
 )
 
+dewey_index_jobs = Table(
+    "dewey_index_jobs", metadata,
+    Column("job_id", Text, primary_key=True),
+    Column("status", Text, nullable=False),
+    Column("params", JSON),
+    Column("result", JSON),
+    Column("error_text", Text),
+    Column("cancel_requested", Boolean, nullable=False, default=False),
+    Column("processed_rows", Integer),
+    Column("indexed_rows", Integer),
+    Column("total_rows_requested", Integer),
+    Column("progress_percent", Numeric),
+    Column("created_at", DateTime, default=func.now()),
+    Column("started_at", DateTime),
+    Column("finished_at", DateTime),
+)
+
 
 def get_engine(url: str | None = None) -> Engine:
     """Engine from the given URL or DATABASE_URL. Raises if neither is set."""

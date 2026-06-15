@@ -150,6 +150,22 @@ CREATE TABLE IF NOT EXISTS prompt_dewey_index (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS dewey_index_jobs (
+    job_id TEXT PRIMARY KEY,
+    status TEXT NOT NULL,
+    params JSONB,
+    result JSONB,
+    error_text TEXT,
+    cancel_requested BOOLEAN NOT NULL DEFAULT FALSE,
+    processed_rows INT,
+    indexed_rows INT,
+    total_rows_requested INT,
+    progress_percent NUMERIC,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    started_at TIMESTAMP,
+    finished_at TIMESTAMP
+);
+
 -- Backward-compatibility view used by earlier docs/query snippets.
 CREATE OR REPLACE VIEW conversation_turns AS
 SELECT

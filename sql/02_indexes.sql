@@ -143,3 +143,15 @@ CREATE INDEX IF NOT EXISTS idx_prompt_dewey_topic_label ON prompt_dewey_index(to
 -- Fast substring search on prompt text.
 CREATE INDEX IF NOT EXISTS idx_prompt_dewey_prompt_text_tsv
     ON prompt_dewey_index USING GIN (to_tsvector('simple', prompt_text));
+
+-- ---------------------------------------------------------------------------
+-- dewey_index_jobs
+-- ---------------------------------------------------------------------------
+-- Recent admin job history.
+CREATE INDEX IF NOT EXISTS idx_dewey_index_jobs_created ON dewey_index_jobs(created_at DESC);
+
+-- Status filtering (running/completed/failed/canceled).
+CREATE INDEX IF NOT EXISTS idx_dewey_index_jobs_status ON dewey_index_jobs(status);
+
+-- Live progress displays and queue monitors.
+CREATE INDEX IF NOT EXISTS idx_dewey_index_jobs_progress ON dewey_index_jobs(progress_percent DESC NULLS LAST);

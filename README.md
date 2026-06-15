@@ -29,7 +29,7 @@ If the Python interpreter is not already selected in VS Code, point it to:
 To stream prompts from Hugging Face WildChat and map each prompt into a Dewey class:
 
 ```bash
-python -m src.dewey_prompt_index --dataset allenai/WildChat --split train --limit 1000000 --out-csv data/exports/wildchat_dewey_index.csv
+python -m src.dewey_prompt_index --dataset allenai/WildChat --split train --limit 1000000 --out-csv data/exports/wildchat_dewey_index.csv --replace-output
 ```
 
 To write the same index rows into PostgreSQL (requires `DATABASE_URL`):
@@ -38,11 +38,19 @@ To write the same index rows into PostgreSQL (requires `DATABASE_URL`):
 python -m src.dewey_prompt_index --dataset allenai/WildChat --split train --limit 1000000 --to-db --replace-db
 ```
 
+If a long run is interrupted, resume from the latest checkpoint:
+
+```bash
+python -m src.dewey_prompt_index --dataset allenai/WildChat --split train --limit 1000000 --out-csv data/exports/wildchat_dewey_index.csv --resume --checkpoint-path data/exports/wildchat_dewey_index.checkpoint.json
+```
+
 Query indexed prompts by Dewey code and/or keyword:
 
 ```bash
 curl "http://127.0.0.1:8000/api/dewey-prompts?dewey=000&q=python&limit=50"
 ```
+
+Frontend browser for this endpoint: `/dewey-prompts`
 
 ---
 

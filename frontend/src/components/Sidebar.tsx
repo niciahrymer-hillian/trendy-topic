@@ -17,6 +17,9 @@ const NAV = [
   { to: "/translations", label: "Translations" },
   { to: "/ai-insights", label: "AI Insights" },
   { to: "/voice", label: "Voice Studio" },
+  { to: "/dewey-taxonomy", label: "Dewey Classification" },
+  { to: "/dewey-prompts", label: "Dewey Prompt Explorer" },
+  { to: "/dewey-prompts#dewey-admin", label: "Dewey Admin" },
 ];
 
 export default function Sidebar() {

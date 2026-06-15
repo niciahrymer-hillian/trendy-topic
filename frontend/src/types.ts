@@ -208,13 +208,13 @@ export interface ExtractParams {
   limit?: number;
 }
 
-<<<<<<< HEAD
 export interface VoiceScript {
   script: string;
   country: string | null;
   topic: string | null;
   chars: number;
-=======
+}
+
 export interface DeweyTopicMapping {
   prompt_topic: string;
   topic_label: string;
@@ -258,5 +258,84 @@ export interface LibrarySearchResponse {
   magazines: LibraryResource[];
   articles: LibraryResource[];
   warnings: string[];
->>>>>>> 1f4c9ef (Implemented Dewey Decimal Library system and search)
+}
+
+export interface DeweyPromptRow {
+  prompt_id: string;
+  prompt_text: string;
+  source_language?: string | null;
+  topic_label?: string | null;
+  topic_category?: string | null;
+  dewey_number: string;
+  dewey_name: string;
+  confidence?: number | null;
+}
+
+export interface DeweyPromptSearchResponse {
+  dewey?: string | null;
+  query?: string | null;
+  limit: number;
+  offset: number;
+  count: number;
+  total_count: number;
+  total_pages: number;
+  rows: DeweyPromptRow[];
+}
+
+export interface DeweyIndexRunResponse {
+  job_id: string;
+  status: "queued";
+  message: string;
+}
+
+export interface DeweyIndexJobStatus {
+  job_id: string;
+  status: "queued" | "running" | "completed" | "failed" | "canceled";
+  params: Record<string, unknown>;
+  result?: Record<string, unknown> | null;
+  error?: string | null;
+  cancel_requested?: boolean;
+  processed_rows?: number | null;
+  indexed_rows?: number | null;
+  total_rows_requested?: number | null;
+  progress_percent?: number | null;
+  created_at?: string | null;
+  started_at?: string | null;
+  finished_at?: string | null;
+}
+
+export interface DeweyIndexJobsResponse {
+  count: number;
+  jobs: DeweyIndexJobStatus[];
+}
+
+export interface DeweyTaxonomyOverview {
+  [classId: string]: {
+    name: string;
+    divisions: Record<string, string>;
+  };
+}
+
+export interface DeweyTaxonomyClass {
+  number: string;
+  name: string;
+  divisions: Record<string, string>;
+}
+
+export interface DeweyTaxonomyDetailed {
+  name: string;
+  full_breakdown: Record<
+    string,
+    {
+      title: string;
+      sections: Record<string, string>;
+    }
+  >;
+}
+
+export interface DeweyTaxonomySearchResult {
+  type: "class" | "division";
+  dewey_number: string;
+  name: string;
+  match: "class_name" | "division_name";
 }

@@ -13,6 +13,7 @@ from dataclasses import dataclass
 import httpx
 
 from . import topic_classifier as tc
+from . import dewey_taxonomy as ddt
 
 
 @dataclass(frozen=True)
@@ -88,6 +89,67 @@ def infer_dewey(topic: str) -> dict:
         "number": best.number,
         "name": best.name,
         "alternatives": alternatives,
+    }
+
+
+def _embedding_rank(query: str) -> list[tuple[float, DeweyClass]]:
+    """Semantic-ish rank using TF-IDF vectors over Dewey names + keywords.
+
+    This keeps dependencies light while improving precision over pure keyword hits.
+    """
+    try:
+        from sklearn.feature_extraction.text import TfidfVectorizer
+        from sklearn.metrics.pairwise import cosine_similarity
+    except Exception:
+        return []
+
+    corpus = [f"{entry.name} {' '.join(entry.keywords)}" for entry in DEWEY_CLASSES]
+    vect = TfidfVectorizer(ngram_range=(1, 2), stop_words="english")
+    matrix = vect.fit_transform(corpus + [query])
+    sims = cosine_similarity(matrix[-1], matrix[:-1]).ravel()
+    return sorted(
+        [(float(sim), DEWEY_CLASSES[i]) for i, sim in enumerate(sims)],
+        key=lambda item: item[0],
+        reverse=True,
+    )
+
+
+def infer_dewey_with_rerank(topic: str) -> dict:
+    """Infer Dewey class using keyword scoring, then TF-IDF reranking when available."""
+    query = (topic or "").strip().lower()
+    if not query:
+        raise ValueError("Topic is required.")
+
+    keyword_rank: list[tuple[float, DeweyClass]] = []
+    for entry in DEWEY_CLASSES:
+        keyword_hits = sum(1 for kw in entry.keywords if kw in query)
+        keyword_rank.append((float(keyword_hits), entry))
+
+    emb_rank = _embedding_rank(query)
+    emb_scores = {entry.number: score for score, entry in emb_rank}
+
+    # Combined score prefers keyword certainty but uses embedding similarity to break ties.
+    combined: list[tuple[float, DeweyClass]] = []
+    for keyword_score, entry in keyword_rank:
+        score = (keyword_score * 2.0) + emb_scores.get(entry.number, 0.0)
+        combined.append((score, entry))
+    combined.sort(key=lambda item: item[0], reverse=True)
+
+    best_score, best = combined[0]
+    if best_score <= 0:
+        best = DEWEY_CLASSES[0]
+
+    alternatives = [
+        {"number": entry.number, "name": entry.name}
+        for score, entry in combined[1:4]
+        if score > 0
+    ]
+
+    return {
+        "number": best.number,
+        "name": best.name,
+        "alternatives": alternatives,
+        "method": "keyword+embedding" if emb_rank else "keyword",
     }
 
 
@@ -221,7 +283,7 @@ def _search_crossref(topic: str, *, limit: int, timeout: float) -> list[dict]:
 
 def search_library_resources(topic: str, *, max_results_each: int = 5, timeout: float = 8.0) -> dict:
     """Return Dewey match + books/magazines/articles for a topic."""
-    dewey = infer_dewey(topic)
+    dewey = infer_dewey_with_rerank(topic)
     query = f"{topic} {dewey['number']}"
     taxonomy = topic_taxonomy_catalog()
 
@@ -259,3 +321,46 @@ def search_library_resources(topic: str, *, max_results_each: int = 5, timeout: 
         "articles": articles,
         "warnings": warnings,
     }
+
+
+# ===== DEWEY TAXONOMY API FUNCTIONS =====
+
+
+def get_taxonomy_overview() -> dict:
+    """Return all 10 main Dewey classes with their divisions."""
+    result = {}
+    for class_id in sorted(ddt.DEWEY_TAXONOMY.keys()):
+        class_data = ddt.DEWEY_TAXONOMY[class_id]
+        result[class_id] = {
+            "name": class_data["name"],
+            "divisions": class_data["divisions"],
+        }
+    return result
+
+
+def get_taxonomy_class(class_id: str) -> dict | None:
+    """Return details for a specific Dewey class with divisions."""
+    if class_id not in ddt.DEWEY_TAXONOMY:
+        return None
+    class_data = ddt.DEWEY_TAXONOMY[class_id]
+    return {
+        "number": class_id,
+        "name": class_data["name"],
+        "divisions": class_data["divisions"],
+    }
+
+
+def get_taxonomy_detailed(class_id: str) -> dict | None:
+    """Return detailed section-level breakdown for a Dewey class (when available).
+    
+    Currently detailed breakdowns are available for class 300 (Social Sciences).
+    """
+    detailed = ddt.get_detailed_breakdown(class_id)
+    if not detailed:
+        return None
+    return detailed
+
+
+def search_taxonomy(query: str) -> list[dict]:
+    """Search Dewey taxonomy by keyword. Returns matching classes and divisions."""
+    return ddt.search_taxonomy(query)
