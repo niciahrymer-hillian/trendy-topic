@@ -23,11 +23,16 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import Response
 from sqlalchemy import insert
 
+<<<<<<< HEAD
 # Load .env so keys (GROQ_API_KEY, ELEVENLABS_API_KEY, DATABASE_URL, …) are picked up
 # automatically — your partner just fills in .env, no manual `source` needed.
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 from src import analysis as an, ask as ask_mod, data_access as da, db as db_mod, translator as tr
+=======
+from src import analysis as an, ask as ask_mod, data_access as da, db as db_mod
+from src import dewey_library_search as dls, translator as tr
+>>>>>>> 1f4c9ef (Implemented Dewey Decimal Library system and search)
 from src import voice_briefing as vb
 
 # Country centroids (lat, lng) so the globe can place + fly to each country.
@@ -422,6 +427,24 @@ def ask(q: str = "") -> dict:
     """
     from src import ai_assistant
     return ai_assistant.answer(_df(), q)
+
+
+@app.get("/api/library-search")
+def library_search(
+    topic: str = Query(..., min_length=2),
+    limit: int = Query(5, ge=1, le=20),
+) -> dict:
+    """Dewey-based topic search that returns books, magazines, and articles."""
+    try:
+        return dls.search_library_resources(topic, max_results_each=limit)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/api/library-taxonomy")
+def library_taxonomy() -> dict:
+    """Return Dewey mappings for all known project topics/categories."""
+    return dls.topic_taxonomy_catalog()
 
 
 @app.post("/api/extract")
