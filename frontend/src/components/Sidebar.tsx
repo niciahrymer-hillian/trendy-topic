@@ -5,7 +5,8 @@ import { useJump } from "../jump";
 import { useTheme } from "../theme";
 
 const NAV = [
-  { to: "/", label: "Global Overview", end: true },
+  { to: "/", label: "Library Search", end: true },
+  { to: "/overview", label: "Global Overview" },
   { to: "/globe", label: "Interactive Globe" },
   { to: "/countries", label: "Country Analysis" },
   { to: "/topics", label: "Topic Explorer" },

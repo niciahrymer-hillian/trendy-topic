@@ -13,6 +13,8 @@ import type {
   LanguageCount,
   LanguageTopicCell,
   CountryClustersResponse,
+  LibrarySearchResponse,
+  LibraryTaxonomyResponse,
   SentimentCount,
   SimilarSummaryResponse,
   Summary,
@@ -87,6 +89,11 @@ export const api = {
   heatmap: () => get<HeatmapCell[]>("/api/heatmap"),
   languageTopics: () => get<LanguageTopicCell[]>("/api/language-topics"),
   ask: (q: string) => get<AskResponse>(`/api/ask?q=${encodeURIComponent(q)}`),
+  librarySearch: (topic: string, limit = 5) =>
+    get<LibrarySearchResponse>(
+      `/api/library-search?topic=${encodeURIComponent(topic)}&limit=${limit}`
+    ),
+  libraryTaxonomy: () => get<LibraryTaxonomyResponse>("/api/library-taxonomy"),
   extract: (p: ExtractParams) => {
     const q = new URLSearchParams();
     if (p.country) q.set("country", p.country);

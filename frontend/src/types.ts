@@ -208,9 +208,55 @@ export interface ExtractParams {
   limit?: number;
 }
 
+<<<<<<< HEAD
 export interface VoiceScript {
   script: string;
   country: string | null;
   topic: string | null;
   chars: number;
+=======
+export interface DeweyTopicMapping {
+  prompt_topic: string;
+  topic_label: string;
+  topic_category: string;
+  dewey_number: string;
+  dewey_name: string;
+}
+
+export interface DeweyCategoryMapping {
+  topic_category: string;
+  dewey_number: string;
+  dewey_name: string;
+}
+
+export interface LibraryTaxonomyResponse {
+  topics: DeweyTopicMapping[];
+  categories: DeweyCategoryMapping[];
+}
+
+export interface LibraryResource {
+  id: string;
+  title: string;
+  authors: string[];
+  published?: string | null;
+  source: string;
+  resource_type: "book" | "magazine" | "article";
+  summary?: string | null;
+  url?: string | null;
+  journal?: string | null;
+}
+
+export interface LibrarySearchResponse {
+  topic: string;
+  dewey: {
+    number: string;
+    name: string;
+    alternatives: { number: string; name: string }[];
+  };
+  catalog_matches: DeweyTopicMapping[];
+  books: LibraryResource[];
+  magazines: LibraryResource[];
+  articles: LibraryResource[];
+  warnings: string[];
+>>>>>>> 1f4c9ef (Implemented Dewey Decimal Library system and search)
 }
