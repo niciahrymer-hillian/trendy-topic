@@ -32,6 +32,8 @@ from src import analysis as an, ask as ask_mod, data_access as da, db as db_mod
 from src import dewey_library_search as dls
 from src import dewey_prompt_index as dpi
 from src import translator as tr
+from src import analysis as an, ask as ask_mod, data_access as da, db as db_mod, translator as tr
+from src import dewey_library_search as dls, translator as tr
 from src import voice_briefing as vb
 
 # Country centroids (lat, lng) so the globe can place + fly to each country.
