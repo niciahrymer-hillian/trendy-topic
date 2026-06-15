@@ -1,4 +1,4 @@
-git pull"""Ingestion pipeline: format router, validation, mapping, and DB load."""
+"""Ingestion pipeline: format router, validation, mapping, and DB load."""
 
 from datetime import date
 from pathlib import Path

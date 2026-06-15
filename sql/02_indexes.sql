@@ -130,3 +130,28 @@ CREATE INDEX IF NOT EXISTS idx_ai_topic_extractions_created ON ai_topic_extracti
 -- ---------------------------------------------------------------------------
 -- Country + topic lookup for the voice briefing studio.
 CREATE INDEX IF NOT EXISTS idx_voice_briefs_country_topic ON voice_briefs(country_id, topic_category);
+
+-- ---------------------------------------------------------------------------
+-- prompt_dewey_index
+-- ---------------------------------------------------------------------------
+-- Prefix lookup for Dewey queries (e.g. 000, 300).
+CREATE INDEX IF NOT EXISTS idx_prompt_dewey_number ON prompt_dewey_index(dewey_number);
+
+-- Topic drilldowns and grouped analytics.
+CREATE INDEX IF NOT EXISTS idx_prompt_dewey_topic_label ON prompt_dewey_index(topic_label);
+
+-- Fast substring search on prompt text.
+CREATE INDEX IF NOT EXISTS idx_prompt_dewey_prompt_text_tsv
+    ON prompt_dewey_index USING GIN (to_tsvector('simple', prompt_text));
+
+-- ---------------------------------------------------------------------------
+-- dewey_index_jobs
+-- ---------------------------------------------------------------------------
+-- Recent admin job history.
+CREATE INDEX IF NOT EXISTS idx_dewey_index_jobs_created ON dewey_index_jobs(created_at DESC);
+
+-- Status filtering (running/completed/failed/canceled).
+CREATE INDEX IF NOT EXISTS idx_dewey_index_jobs_status ON dewey_index_jobs(status);
+
+-- Live progress displays and queue monitors.
+CREATE INDEX IF NOT EXISTS idx_dewey_index_jobs_progress ON dewey_index_jobs(progress_percent DESC NULLS LAST);
