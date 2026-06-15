@@ -17,6 +17,12 @@ so they don't get lost.
 - Especially when clicking a country opens the insights panel — rework the GlobePage
   layout so the globe stays large alongside/above the detail panel.
 
+## 2b. Fly-to → country flag pop + wave animation
+- When the globe finishes flying to / lands on a country, **pop up that country's flag
+  with a waving animation** (CSS/SVG wave effect).
+- Flag derived from the country's `iso2` (flag emoji or a flag-image set, e.g. flagcdn).
+- Trigger on the `pointOfView` fly-to completion / country selection in `GlobePage.tsx`.
+
 ## 3. Animated robot mascot on "Ask the Dataset"
 - Add the little blue robot mascot to the Ask page.
 - Animate it: **moves around and blinks** throughout the interaction (idle + while thinking).
@@ -33,12 +39,14 @@ so they don't get lost.
 - Optional upgrade: **ElevenLabs** (`src/voice_briefing.synthesize`, key-gated) for nicer voice.
 - Add a speaker on/off toggle; only the safe aggregate answer is voiced.
 
-## 6. Consolidate charts / graphs / pages
-- Trim redundancy for a smoother, more efficient UX:
-  - Same chart repeats across pages (topic bars on Overview/Country/Topic Explorer,
-    sentiment pies, heatmaps on Wow + Language).
-  - Reduce the page count, dedupe charts, and tighten the sidebar nav.
-- Goal: fewer, higher-signal views; less scrolling; clearer flow.
+## 6. Consolidate + organize pages for the demo
+- **Trim redundancy:** same chart repeats across pages (topic bars on Overview/Country/
+  Topic Explorer, sentiment pies, heatmaps on Wow + Language). Reduce the page count,
+  dedupe charts.
+- **Organize for a live demo:** order the pages/nav as a story — lead with the
+  highest-impact views (Global Overview → Interactive Globe → Country/Topic), group or
+  de-emphasize low-signal pages, minimize clicking.
+- Goal: fewer, higher-signal views; a clean demo flow; less scrolling.
 
 ## Design reference
 - `docs/design/globe_lights_and_robot_reference.png` — the user's mockup showing the
