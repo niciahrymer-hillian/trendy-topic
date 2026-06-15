@@ -137,6 +137,19 @@ CREATE TABLE IF NOT EXISTS voice_briefs (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS prompt_dewey_index (
+    index_id SERIAL PRIMARY KEY,
+    prompt_id TEXT NOT NULL UNIQUE,
+    prompt_text TEXT NOT NULL,
+    source_language TEXT,
+    topic_label TEXT,
+    topic_category TEXT,
+    dewey_number VARCHAR(16) NOT NULL,
+    dewey_name TEXT NOT NULL,
+    confidence NUMERIC,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Backward-compatibility view used by earlier docs/query snippets.
 CREATE OR REPLACE VIEW conversation_turns AS
 SELECT

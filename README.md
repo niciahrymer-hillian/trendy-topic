@@ -24,6 +24,26 @@ If the Python interpreter is not already selected in VS Code, point it to:
 
 `/Users/shocka/trendy-topic/.venv/bin/python`
 
+## Dewey Indexing for Full WildChat
+
+To stream prompts from Hugging Face WildChat and map each prompt into a Dewey class:
+
+```bash
+python -m src.dewey_prompt_index --dataset allenai/WildChat --split train --limit 1000000 --out-csv data/exports/wildchat_dewey_index.csv
+```
+
+To write the same index rows into PostgreSQL (requires `DATABASE_URL`):
+
+```bash
+python -m src.dewey_prompt_index --dataset allenai/WildChat --split train --limit 1000000 --to-db --replace-db
+```
+
+Query indexed prompts by Dewey code and/or keyword:
+
+```bash
+curl "http://127.0.0.1:8000/api/dewey-prompts?dewey=000&q=python&limit=50"
+```
+
 ---
 
 

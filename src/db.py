@@ -187,6 +187,21 @@ voice_briefs = Table(
     Column("created_at", DateTime, default=func.now()),
 )
 
+prompt_dewey_index = Table(
+    "prompt_dewey_index", metadata,
+    Column("index_id", Integer, primary_key=True, autoincrement=True),
+    Column("prompt_id", Text, nullable=False),
+    Column("prompt_text", Text, nullable=False),
+    Column("source_language", Text),
+    Column("topic_label", Text),
+    Column("topic_category", Text),
+    Column("dewey_number", String(16), nullable=False),
+    Column("dewey_name", Text, nullable=False),
+    Column("confidence", Numeric),
+    Column("created_at", DateTime, default=func.now()),
+    UniqueConstraint("prompt_id", name="uq_prompt_dewey_index_prompt_id"),
+)
+
 
 def get_engine(url: str | None = None) -> Engine:
     """Engine from the given URL or DATABASE_URL. Raises if neither is set."""

@@ -373,6 +373,29 @@ def test_library_taxonomy_returns_topics_and_categories():
     } <= body["topics"][0].keys()
 
 
+    def test_dewey_prompts_endpoint_returns_rows_with_paging(monkeypatch):
+        monkeypatch.setattr(
+            api_main.dpi,
+            "search_index",
+            lambda dewey_prefix, query, limit, offset: [
+                {
+                    "prompt_id": "abc",
+                    "prompt_text": "Debug Python code",
+                    "dewey_number": "000",
+                    "dewey_name": "Computer science, information & general works",
+                }
+            ],
+        )
+
+        body = client.get("/api/dewey-prompts", params={"dewey": "000", "q": "python", "limit": 25, "offset": 0}).json()
+        assert body["dewey"] == "000"
+        assert body["query"] == "python"
+        assert body["limit"] == 25
+        assert body["offset"] == 0
+        assert body["count"] == 1
+        assert body["rows"][0]["prompt_id"] == "abc"
+
+
 # ---------------------------------------------------------------------------
 # /api/extract  (no-key path; key path requires live Groq — not tested here)
 # ---------------------------------------------------------------------------

@@ -13,8 +13,6 @@ import os
 import uuid
 from pathlib import Path
 
-from pathlib import Path
-
 import pandas as pd
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query
@@ -23,16 +21,14 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import Response
 from sqlalchemy import insert
 
-<<<<<<< HEAD
 # Load .env so keys (GROQ_API_KEY, ELEVENLABS_API_KEY, DATABASE_URL, …) are picked up
 # automatically — your partner just fills in .env, no manual `source` needed.
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
-from src import analysis as an, ask as ask_mod, data_access as da, db as db_mod, translator as tr
-=======
 from src import analysis as an, ask as ask_mod, data_access as da, db as db_mod
-from src import dewey_library_search as dls, translator as tr
->>>>>>> 1f4c9ef (Implemented Dewey Decimal Library system and search)
+from src import dewey_library_search as dls
+from src import dewey_prompt_index as dpi
+from src import translator as tr
 from src import voice_briefing as vb
 
 # Country centroids (lat, lng) so the globe can place + fly to each country.
@@ -445,6 +441,25 @@ def library_search(
 def library_taxonomy() -> dict:
     """Return Dewey mappings for all known project topics/categories."""
     return dls.topic_taxonomy_catalog()
+
+
+@app.get("/api/dewey-prompts")
+def dewey_prompts(
+    dewey: str | None = Query(None, min_length=1, max_length=8),
+    q: str | None = Query(None, min_length=1),
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+) -> dict:
+    """Search Dewey-indexed prompts from DB when configured, otherwise from CSV export."""
+    rows = dpi.search_index(dewey_prefix=dewey, query=q, limit=limit, offset=offset)
+    return {
+        "dewey": dewey,
+        "query": q,
+        "limit": limit,
+        "offset": offset,
+        "count": len(rows),
+        "rows": rows,
+    }
 
 
 @app.post("/api/extract")
