@@ -33,12 +33,14 @@ so they don't get lost.
 - Optional upgrade: **ElevenLabs** (`src/voice_briefing.synthesize`, key-gated) for nicer voice.
 - Add a speaker on/off toggle; only the safe aggregate answer is voiced.
 
-## 6. Consolidate charts / graphs / pages
-- Trim redundancy for a smoother, more efficient UX:
-  - Same chart repeats across pages (topic bars on Overview/Country/Topic Explorer,
-    sentiment pies, heatmaps on Wow + Language).
-  - Reduce the page count, dedupe charts, and tighten the sidebar nav.
-- Goal: fewer, higher-signal views; less scrolling; clearer flow.
+## 6. Consolidate + organize pages for the demo
+- **Trim redundancy:** same chart repeats across pages (topic bars on Overview/Country/
+  Topic Explorer, sentiment pies, heatmaps on Wow + Language). Reduce the page count,
+  dedupe charts.
+- **Organize for a live demo:** order the pages/nav as a story — lead with the
+  highest-impact views (Global Overview → Interactive Globe → Country/Topic), group or
+  de-emphasize low-signal pages, minimize clicking.
+- Goal: fewer, higher-signal views; a clean demo flow; less scrolling.
 
 ## Design reference
 - `docs/design/globe_lights_and_robot_reference.png` — the user's mockup showing the
