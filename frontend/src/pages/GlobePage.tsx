@@ -60,6 +60,8 @@ export default function GlobePage() {
   const [hovered, setHovered] = useState<CountryProfile | null>(null);
   // The country we've finished flying to — drives the flag pop + glow ring.
   const [landed, setLanded] = useState<CountryProfile | null>(null);
+  // Idle attractor: rings pulse on every country until the user first interacts.
+  const [interacted, setInteracted] = useState(false);
   const { set } = useJump();
 
   // Size the globe to its (now larger) container.
@@ -94,6 +96,7 @@ export default function GlobePage() {
   useEffect(() => () => { if (flagTimer.current) window.clearTimeout(flagTimer.current); }, []);
 
   const flyTo = (d: CountryProfile) => {
+    setInteracted(true);
     setSelected(d);
     setLanded(null); // hide the flag while the camera is flying
     if (flagTimer.current) window.clearTimeout(flagTimer.current);
@@ -119,7 +122,11 @@ export default function GlobePage() {
   if (loading) return <Loading />;
   if (error || !data) return <ErrorState message={error ?? "no data"} />;
 
-  const ringTargets: CountryProfile[] = selected ? [selected] : hovered ? [hovered] : [];
+  // Before any interaction, pulse a ring on every country (attractor). After the
+  // user hovers/clicks, narrow the ring to just the selected/hovered country.
+  const ringTargets: CountryProfile[] = interacted
+    ? (selected ? [selected] : hovered ? [hovered] : [])
+    : data;
 
   return (
     <div>
@@ -160,7 +167,7 @@ export default function GlobePage() {
           pointResolution={18}
           pointColor={(d) => SENTIMENT_COLOR[(d as CountryProfile).dominant_sentiment] ?? "#4aa8ff"}
           pointLabel={(d) => tooltip(d as CountryProfile, isDark)}
-          onPointHover={(d) => setHovered((d as CountryProfile) ?? null)}
+          onPointHover={(d) => { if (d) setInteracted(true); setHovered((d as CountryProfile) ?? null); }}
           onPointClick={(d) => flyTo(d as CountryProfile)}
           // Pulsing glow ring on the country we just landed on.
           ringsData={ringTargets}

@@ -22,9 +22,10 @@ export default function App() {
     <Suspense fallback={<div className="state">Loading...</div>}>
       <Routes>
         <Route element={<Layout />}>
-          <Route index element={<LibrarySearch />} />
-          <Route path="overview" element={<Overview />} />
+          <Route index element={<GlobePage />} />
           <Route path="globe" element={<GlobePage />} />
+          <Route path="overview" element={<Overview />} />
+          <Route path="library" element={<LibrarySearch />} />
           <Route path="countries" element={<Country />} />
           <Route path="topics" element={<Topics />} />
           <Route path="languages" element={<Languages />} />

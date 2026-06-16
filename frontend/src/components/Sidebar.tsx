@@ -5,9 +5,8 @@ import { useJump } from "../jump";
 import { useTheme } from "../theme";
 
 const NAV = [
-  { to: "/", label: "Library Search", end: true },
+  { to: "/", label: "Interactive Globe", end: true },
   { to: "/overview", label: "Global Overview" },
-  { to: "/globe", label: "Interactive Globe" },
   { to: "/countries", label: "Country Analysis" },
   { to: "/topics", label: "Topic Explorer" },
   { to: "/languages", label: "Language Analysis" },
@@ -17,6 +16,7 @@ const NAV = [
   { to: "/translations", label: "Translations" },
   { to: "/ai-insights", label: "AI Insights" },
   { to: "/voice", label: "Voice Studio" },
+  { to: "/library", label: "Library Search" },
   { to: "/dewey-taxonomy", label: "Dewey Classification" },
   { to: "/dewey-prompts", label: "Dewey Prompt Explorer" },
   { to: "/dewey-prompts#dewey-admin", label: "Dewey Admin" },
