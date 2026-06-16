@@ -29,9 +29,8 @@ export default function Sidebar() {
     <aside className="sidebar">
       <div className="brand">
         <img src="/assets/trendy-topic-icon.png" alt="Trendy Topic" className="brand-icon" />
-        <div>
-          <div className="brand-title">Trendy Topic</div>
-          <div className="brand-sub">What the World Asks AI</div>
+        <div className="brand-text">
+          <div className="brand-title">TRENDY TOPIC</div>
         </div>
       </div>
 

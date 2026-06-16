@@ -56,16 +56,16 @@ body {
   height: 100vh;
   overflow-y: auto;
 }
-.brand { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+.brand { display: flex; align-items: center; gap: 6px; margin-bottom: 24px; }
 .brand-icon {
-  width: 72px;
-  height: 72px;
+  width: 90px;
+  height: 90px;
   border-radius: 8px;
   object-fit: contain;
   flex-shrink: 0;
 }
-.brand-title { font-weight: 700; font-size: 22px; }
-.brand-sub { font-size: 11px; color: var(--muted); }
+.brand-text { display: flex; justify-content: center; flex: 1; }
+.brand-title { font-weight: 700; font-size: 26px; text-align: center; }
 
 .nav { display: flex; flex-direction: column; gap: 4px; }
 .nav-link {
