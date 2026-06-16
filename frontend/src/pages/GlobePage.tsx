@@ -7,6 +7,7 @@
 // - Dark mode shows the night-lights earth texture with a stronger atmosphere glow.
 
 import { useEffect, useRef, useState } from "react";
+import * as THREE from "three";
 import type { EChartsOption } from "echarts";
 import Globe, { type GlobeMethods } from "react-globe.gl";
 import { api } from "../api";
@@ -74,14 +75,22 @@ export default function GlobePage() {
     return () => window.removeEventListener("resize", measure);
   }, []);
 
-  // Auto-rotate once the globe is ready.
+  // Auto-rotate + make the night-lights texture glow via emissive lighting.
   useEffect(() => {
-    const controls = globeRef.current?.controls();
-    if (controls) {
-      controls.autoRotate = true;
-      controls.autoRotateSpeed = 0.6;
-    }
-  }, [data]);
+    const globe = globeRef.current;
+    if (!globe) return;
+
+    const controls = globe.controls();
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 0.6;
+
+    // globeMaterial() exists at runtime but isn't in this version's typings.
+    const material = (globe as unknown as { globeMaterial(): THREE.Material })
+      .globeMaterial() as THREE.MeshPhongMaterial;
+    material.emissive = new THREE.Color("#ffffff");
+    material.emissiveIntensity = isDark ? 1.8 : 0.3;
+    material.needsUpdate = true;
+  }, [data, isDark]);
 
   useEffect(() => () => { if (flagTimer.current) window.clearTimeout(flagTimer.current); }, []);
 
@@ -144,8 +153,8 @@ export default function GlobePage() {
           }
           bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
           showAtmosphere
-          atmosphereColor={isDark ? "#5db7ff" : "#1f7bff"}
-          atmosphereAltitude={isDark ? 0.3 : 0.2}
+          atmosphereColor={isDark ? "#7fd3ff" : "#1f7bff"}
+          atmosphereAltitude={isDark ? 0.45 : 0.2}
           showGraticules
           pointsData={data}
           pointLat={(d) => (d as CountryProfile).lat}
@@ -158,13 +167,13 @@ export default function GlobePage() {
           onPointHover={(d) => setHovered((d as CountryProfile) ?? null)}
           onPointClick={(d) => flyTo(d as CountryProfile)}
           // Pulsing glow ring on the country we just landed on.
-          ringsData={landed ? [landed] : []}
+          ringsData={ringTargets}
           ringLat={(d) => (d as CountryProfile).lat}
           ringLng={(d) => (d as CountryProfile).lng}
-          ringColor={() => (t: number) => `rgba(93,183,255,${1 - t})`}
-          ringMaxRadius={4}
-          ringPropagationSpeed={2}
-          ringRepeatPeriod={700}
+          ringColor={() => (t: number) => `rgba(127,211,255,${1 - t})`}
+          ringMaxRadius={10}
+          ringPropagationSpeed={3}
+          ringRepeatPeriod={1400}
         />
 
         {landed && (
