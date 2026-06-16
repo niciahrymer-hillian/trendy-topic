@@ -28,7 +28,7 @@ export default function Sidebar() {
   return (
     <aside className="sidebar">
       <div className="brand">
-        <span className="brand-dot" />
+        <img src="/assets/trendy-topic-icon.png" alt="Trendy Topic" className="brand-icon" />
         <div>
           <div className="brand-title">Trendy Topic</div>
           <div className="brand-sub">What the World Asks AI</div>

@@ -57,11 +57,14 @@ body {
   overflow-y: auto;
 }
 .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
-.brand-dot {
-  width: 28px; height: 28px; border-radius: 50%;
-  background: radial-gradient(circle at 30% 30%, var(--accent), var(--accent-2));
+.brand-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 8px;
+  object-fit: contain;
+  flex-shrink: 0;
 }
-.brand-title { font-weight: 700; font-size: 16px; }
+.brand-title { font-weight: 700; font-size: 22px; }
 .brand-sub { font-size: 11px; color: var(--muted); }
 
 .nav { display: flex; flex-direction: column; gap: 4px; }
