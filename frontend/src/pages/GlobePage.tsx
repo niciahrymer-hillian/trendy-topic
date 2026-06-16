@@ -62,6 +62,8 @@ export default function GlobePage() {
   const [landed, setLanded] = useState<CountryProfile | null>(null);
   // Idle attractor: rings pulse on every country until the user first interacts.
   const [interacted, setInteracted] = useState(false);
+  // react-globe.gl builds its material asynchronously; only touch it once ready.
+  const [ready, setReady] = useState(false);
   const { set } = useJump();
 
   // Size the globe to its (now larger) container.
@@ -77,21 +79,24 @@ export default function GlobePage() {
   }, []);
 
   // Auto-rotate + make the night-lights texture glow via emissive lighting.
+  // Waits for onGlobeReady — the material is built asynchronously, so touching
+  // it on first mount throws "globeMaterial is not a function".
   useEffect(() => {
     const globe = globeRef.current;
-    if (!globe) return;
+    if (!globe || !ready) return;
 
     const controls = globe.controls();
     controls.autoRotate = true;
     controls.autoRotateSpeed = 0.6;
 
     // globeMaterial() exists at runtime but isn't in this version's typings.
-    const material = (globe as unknown as { globeMaterial(): THREE.Material })
-      .globeMaterial() as THREE.MeshPhongMaterial;
+    const getMaterial = (globe as unknown as { globeMaterial?: () => THREE.Material }).globeMaterial;
+    if (typeof getMaterial !== "function") return;
+    const material = getMaterial.call(globe) as THREE.MeshPhongMaterial;
     material.emissive = new THREE.Color("#ffffff");
     material.emissiveIntensity = isDark ? 1.8 : 0.3;
     material.needsUpdate = true;
-  }, [data, isDark]);
+  }, [data, isDark, ready]);
 
   useEffect(() => () => { if (flagTimer.current) window.clearTimeout(flagTimer.current); }, []);
 
@@ -141,6 +146,7 @@ export default function GlobePage() {
   </div>
   <Globe
     ref={globeRef}
+    onGlobeReady={() => setReady(true)}
     width={width}
     height={height}
     rendererConfig={{

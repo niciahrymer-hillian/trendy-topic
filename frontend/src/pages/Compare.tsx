@@ -21,23 +21,28 @@ const FLAG: Record<string, string> = {
 // A small globe locked onto one country.
 function MiniGlobe({ country, isDark }: { country: CountryProfile; isDark: boolean }) {
   const ref = useRef<GlobeMethods | undefined>(undefined);
+  const [ready, setReady] = useState(false);
   useEffect(() => {
     const g = ref.current;
-    if (!g) return;
+    if (!g || !ready) return;
     g.pointOfView({ lat: country.lat, lng: country.lng, altitude: 1.7 }, 800);
     const controls = g.controls();
     controls.autoRotate = true;
     controls.autoRotateSpeed = 0.5;
-    const m = (g as unknown as { globeMaterial(): THREE.Material }).globeMaterial() as THREE.MeshPhongMaterial;
+    // globeMaterial() is built asynchronously — guard so first mount doesn't throw.
+    const getMaterial = (g as unknown as { globeMaterial?: () => THREE.Material }).globeMaterial;
+    if (typeof getMaterial !== "function") return;
+    const m = getMaterial.call(g) as THREE.MeshPhongMaterial;
     m.emissive = new THREE.Color("#ffffff");
     m.emissiveIntensity = isDark ? 1.8 : 0.3;
     m.needsUpdate = true;
-  }, [country, isDark]);
+  }, [country, isDark, ready]);
 
   return (
     <div className="globe-wrap" style={{ minHeight: 320 }}>
       <Globe
         ref={ref}
+        onGlobeReady={() => setReady(true)}
         width={340}
         height={320}
         backgroundColor="rgba(0,0,0,0)"
