@@ -60,4 +60,44 @@ so they don't get lost.
   - build the robot as an animated SVG/CSS component (no image needed).
 
 ## Status
-Logged 2026-06-12. None implemented yet.
+Logged 2026-06-12. Globe items (1, 2, 2b incl. flag-on-pole) IMPLEMENTED on Nicky.
+Remaining below.
+
+---
+
+# DEMO CONSOLIDATION PLAN (confirmed 2026-06-16)
+
+Goal: condense ~14 pages → ~6, demo-friendly, minimal clicking. Do on `Nicky`, test,
+coordinate the merge to `Dev` (this touches the partner's pages — see Library/Dewey).
+
+## Target page set
+1. **Globe = landing page** (index `/`). Idle: the ring **pulsates around the globe until
+   first interaction**, then stops. Click/select a country → inline per-country analytics
+   (the existing click-to-insights panel). Keeps dark-mode emissive glow + on-pole waving flag.
+2. **Country Comparison = split screen**: two side-by-side globes, each focused on a chosen
+   country, with the compared analytics underneath. (Extends the existing /api/country-compare.)
+3. **Explore** = merge **Topic Explorer + Language Analysis + Sentiment** into one page (tabs).
+4. **Insights** = merge **Wow-Factor + AI Insights**.
+5. **AI Assistant (hub)** = merge **Ask the Dataset + Translation (local+English side-by-side)
+   + Voice (speak answers) + Library/Dewey lookup** (see below). Animated robot mascot here;
+   floating robot on every page → opens AI Assistant.
+6. **Overview** = keep (headline metrics) but NOT landing (Globe is landing); may fold into Globe.
+
+## Library / Dewey integration (fold the partner's 4 pages into AI Assistant)
+Shocka's feature: search a topic → it returns an **actual library resource with a Dewey decimal
+number**. Suggested condense (4 pages → 1 "Library" tab in AI Assistant):
+- **Primary:** a topic search box → returns the Dewey number + a real resource (title/author),
+  reusing his existing search code/endpoints (don't rewrite).
+- **Demote** the Dewey Classification taxonomy tree to a collapsible reference panel / secondary tab.
+- **Move Dewey Admin** (editing the taxonomy) behind an "admin" toggle — back-office, not demo-facing.
+- ⚠️ COORDINATE with Shocka — his Dewey/Library code lives on his branch; integrating across
+  branches risks conflicts. Reuse his components/endpoints; sync carefully.
+
+## Cleanup
+- **Delete stale/unused design** after merging: standalone Country/Ask/Translation/Voice/Topics/
+  Languages/Sentiment/Wow/AIInsights pages once absorbed; the old `.globe-flag`/`.flag-emoji` CSS
+  (replaced by `.pole-flag`); any dead components/routes.
+
+## Still in scope (earlier)
+- Animated robot mascot + floating robot → AI Assistant (items 3,4); AI bot speaks answers (item 5).
+- LLM Groq→Claude fallback — already restored (src/llm.py).
