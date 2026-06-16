@@ -13,6 +13,7 @@ const Ask = lazy(() => import("./pages/Ask"));
 const Translations = lazy(() => import("./pages/Translations"));
 const AIInsights = lazy(() => import("./pages/AIInsights"));
 const VoiceStudio = lazy(() => import("./pages/VoiceStudio"));
+const AIAssistant = lazy(() => import("./pages/AIAssistant"));
 const LibrarySearch = lazy(() => import("./pages/LibrarySearch"));
 const DeweyPrompts = lazy(() => import("./pages/DeweyPrompts"));
 const DeweyTaxonomy = lazy(() => import("./pages/DeweyTaxonomy"));
@@ -35,6 +36,7 @@ export default function App() {
           <Route path="translations" element={<Translations />} />
           <Route path="ai-insights" element={<AIInsights />} />
           <Route path="voice" element={<VoiceStudio />} />
+          <Route path="ai-assistant" element={<AIAssistant />} />
           <Route path="dewey-prompts" element={<DeweyPrompts />} />
           <Route path="dewey-taxonomy" element={<DeweyTaxonomy />} />
         </Route>
