@@ -7,17 +7,13 @@ import { useTheme } from "../theme";
 const NAV = [
   { to: "/", label: "Interactive Globe", end: true },
   { to: "/overview", label: "Global Overview" },
-  { to: "/countries", label: "Country Analysis" },
-  { to: "/topics", label: "Topic Explorer" },
-  { to: "/languages", label: "Language Analysis" },
-  { to: "/sentiment", label: "Sentiment" },
-  { to: "/wow", label: "Wow-Factor Insights" },
+  { to: "/compare", label: "Compare Countries" },
+  { to: "/explore", label: "Explore" },
+  { to: "/insights", label: "Insights" },
   { to: "/ai-assistant", label: "AI Assistant" },
-  { to: "/ai-insights", label: "AI Insights" },
   { to: "/library", label: "Library Search" },
   { to: "/dewey-taxonomy", label: "Dewey Classification" },
   { to: "/dewey-prompts", label: "Dewey Prompt Explorer" },
-  { to: "/dewey-prompts#dewey-admin", label: "Dewey Admin" },
 ];
 
 export default function Sidebar() {
