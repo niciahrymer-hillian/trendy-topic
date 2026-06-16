@@ -295,10 +295,20 @@ button.primary {
   backdrop-filter: blur(4px);
 }
 
-/* Larger globe block: taller, and breaks out slightly wider than the text columns. */
+/* Larger globe block: taller, and breaks out of the content's 1200px cap so it
+   fills the full width available next to the sidebar. The globe canvas stays
+   centered inside it via .globe-wrap's flex centering. */
 .globe-wrap--large {
   min-height: 640px;
-  margin: 0 -12px;
+  width: calc(100vw - 260px - 72px); /* viewport - sidebar - content padding */
+  max-width: none;
+  margin: 0;
+}
+@media (max-width: 900px) {
+  .globe-wrap--large { width: calc(100vw - 210px - 72px); } /* sidebar shrinks to 210px */
+}
+@media (max-width: 720px) {
+  .globe-wrap--large { width: 100%; } /* sidebar stacks; content is full width */
 }
 
 @keyframes flag-wave {
