@@ -60,7 +60,6 @@ export default function GlobePage() {
   const [hovered, setHovered] = useState<CountryProfile | null>(null);
   // The country we've finished flying to — drives the flag pop + glow ring.
   const [landed, setLanded] = useState<CountryProfile | null>(null);
-  const [flagKey, setFlagKey] = useState(0);
   const { set } = useJump();
 
   // Size the globe to its (now larger) container.
@@ -99,11 +98,8 @@ export default function GlobePage() {
     setLanded(null); // hide the flag while the camera is flying
     if (flagTimer.current) window.clearTimeout(flagTimer.current);
     globeRef.current?.pointOfView({ lat: d.lat, lng: d.lng, altitude: 1.6 }, 1000);
-    // Pop the flag once the ~1s fly-to animation lands.
-    flagTimer.current = window.setTimeout(() => {
-      setLanded(d);
-      setFlagKey((k) => k + 1);
-    }, 1050);
+    // Pop the flag (on the country's pole) once the ~1s fly-to animation lands.
+    flagTimer.current = window.setTimeout(() => setLanded(d), 1050);
   };
 
   // Publish the country list to the sidebar "Jump to" menu.
@@ -174,14 +170,21 @@ export default function GlobePage() {
           ringMaxRadius={10}
           ringPropagationSpeed={3}
           ringRepeatPeriod={1400}
+          // Flag planted on the country's pole — pops out of the pole and waves on landing.
+          htmlElementsData={landed ? [landed] : []}
+          htmlLat={(d) => (d as CountryProfile).lat}
+          htmlLng={(d) => (d as CountryProfile).lng}
+          htmlAltitude={0.24}
+          htmlElement={(d) => {
+            const c = d as CountryProfile;
+            const el = document.createElement("div");
+            el.className = "pole-flag";
+            el.innerHTML =
+              `<span class="pole-flag-cloth">${flagFor(c.iso3)}</span>` +
+              `<span class="pole-flag-name">${c.country}</span>`;
+            return el;
+          }}
         />
-
-        {landed && (
-          <div className="globe-flag" key={flagKey}>
-            <span className="flag-emoji">{flagFor(landed.iso3)}</span>
-            <span>{landed.country}</span>
-          </div>
-        )}
       </div>
 
       {selected ? (

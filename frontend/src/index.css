@@ -339,6 +339,36 @@ button.primary {
   50%      { transform: rotate(-2deg) skewX(5deg); }
   75%      { transform: rotate(3deg) skewX(-4deg); }
 }
+
+/* Flag planted on the country's pole (react-globe.gl HTML element). */
+.pole-flag {
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  transform: translate(4px, -22px);   /* lift the cloth to the top of the pole */
+  white-space: nowrap;
+}
+.pole-flag-cloth {
+  font-size: 30px;
+  line-height: 1;
+  transform-origin: left center;       /* wave from the pole side */
+  animation: pole-pop 0.45s ease-out, flag-wave 1.2s ease-in-out 0.45s infinite;
+}
+.pole-flag-name {
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(15, 20, 25, 0.72);
+  border-radius: 6px;
+  padding: 1px 6px;
+}
+@keyframes pole-pop {
+  0%   { opacity: 0; transform: scale(0.2) rotate(-14deg); }
+  70%  { opacity: 1; transform: scale(1.15) rotate(4deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); }
+}
 .answer { background: var(--panel-2); border-left: 3px solid var(--accent); padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; }
 
 .library-summary-grid {
