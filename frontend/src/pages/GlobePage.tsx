@@ -7,6 +7,7 @@
 // - Dark mode shows the night-lights earth texture with a stronger atmosphere glow.
 
 import { useEffect, useRef, useState } from "react";
+import * as THREE from "three";
 import type { EChartsOption } from "echarts";
 import Globe, { type GlobeMethods } from "react-globe.gl";
 import { api } from "../api";
@@ -59,7 +60,8 @@ export default function GlobePage() {
   const [hovered, setHovered] = useState<CountryProfile | null>(null);
   // The country we've finished flying to — drives the flag pop + glow ring.
   const [landed, setLanded] = useState<CountryProfile | null>(null);
-  const [flagKey, setFlagKey] = useState(0);
+  // Idle attractor: rings pulse on every country until the user first interacts.
+  const [interacted, setInteracted] = useState(false);
   const { set } = useJump();
 
   // Size the globe to its (now larger) container.
@@ -74,27 +76,33 @@ export default function GlobePage() {
     return () => window.removeEventListener("resize", measure);
   }, []);
 
-  // Auto-rotate once the globe is ready.
+  // Auto-rotate + make the night-lights texture glow via emissive lighting.
   useEffect(() => {
-    const controls = globeRef.current?.controls();
-    if (controls) {
-      controls.autoRotate = true;
-      controls.autoRotateSpeed = 0.6;
-    }
-  }, [data]);
+    const globe = globeRef.current;
+    if (!globe) return;
+
+    const controls = globe.controls();
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 0.6;
+
+    // globeMaterial() exists at runtime but isn't in this version's typings.
+    const material = (globe as unknown as { globeMaterial(): THREE.Material })
+      .globeMaterial() as THREE.MeshPhongMaterial;
+    material.emissive = new THREE.Color("#ffffff");
+    material.emissiveIntensity = isDark ? 1.8 : 0.3;
+    material.needsUpdate = true;
+  }, [data, isDark]);
 
   useEffect(() => () => { if (flagTimer.current) window.clearTimeout(flagTimer.current); }, []);
 
   const flyTo = (d: CountryProfile) => {
+    setInteracted(true);
     setSelected(d);
     setLanded(null); // hide the flag while the camera is flying
     if (flagTimer.current) window.clearTimeout(flagTimer.current);
     globeRef.current?.pointOfView({ lat: d.lat, lng: d.lng, altitude: 1.6 }, 1000);
-    // Pop the flag once the ~1s fly-to animation lands.
-    flagTimer.current = window.setTimeout(() => {
-      setLanded(d);
-      setFlagKey((k) => k + 1);
-    }, 1050);
+    // Pop the flag (on the country's pole) once the ~1s fly-to animation lands.
+    flagTimer.current = window.setTimeout(() => setLanded(d), 1050);
   };
 
   // Publish the country list to the sidebar "Jump to" menu.
@@ -114,7 +122,11 @@ export default function GlobePage() {
   if (loading) return <Loading />;
   if (error || !data) return <ErrorState message={error ?? "no data"} />;
 
-  const ringTargets: CountryProfile[] = selected ? [selected] : hovered ? [hovered] : [];
+  // Before any interaction, pulse a ring on every country (attractor). After the
+  // user hovers/clicks, narrow the ring to just the selected/hovered country.
+  const ringTargets: CountryProfile[] = interacted
+    ? (selected ? [selected] : hovered ? [hovered] : [])
+    : data;
 
   return (
     <div>
@@ -144,8 +156,8 @@ export default function GlobePage() {
           }
           bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
           showAtmosphere
-          atmosphereColor={isDark ? "#5db7ff" : "#1f7bff"}
-          atmosphereAltitude={isDark ? 0.3 : 0.2}
+          atmosphereColor={isDark ? "#7fd3ff" : "#1f7bff"}
+          atmosphereAltitude={isDark ? 0.45 : 0.2}
           showGraticules
           pointsData={data}
           pointLat={(d) => (d as CountryProfile).lat}
@@ -155,24 +167,31 @@ export default function GlobePage() {
           pointResolution={18}
           pointColor={(d) => SENTIMENT_COLOR[(d as CountryProfile).dominant_sentiment] ?? "#4aa8ff"}
           pointLabel={(d) => tooltip(d as CountryProfile, isDark)}
-          onPointHover={(d) => setHovered((d as CountryProfile) ?? null)}
+          onPointHover={(d) => { if (d) setInteracted(true); setHovered((d as CountryProfile) ?? null); }}
           onPointClick={(d) => flyTo(d as CountryProfile)}
           // Pulsing glow ring on the country we just landed on.
-          ringsData={landed ? [landed] : []}
+          ringsData={ringTargets}
           ringLat={(d) => (d as CountryProfile).lat}
           ringLng={(d) => (d as CountryProfile).lng}
-          ringColor={() => (t: number) => `rgba(93,183,255,${1 - t})`}
-          ringMaxRadius={4}
-          ringPropagationSpeed={2}
-          ringRepeatPeriod={700}
+          ringColor={() => (t: number) => `rgba(127,211,255,${1 - t})`}
+          ringMaxRadius={10}
+          ringPropagationSpeed={3}
+          ringRepeatPeriod={1400}
+          // Flag planted on the country's pole — pops out of the pole and waves on landing.
+          htmlElementsData={landed ? [landed] : []}
+          htmlLat={(d) => (d as CountryProfile).lat}
+          htmlLng={(d) => (d as CountryProfile).lng}
+          htmlAltitude={0.24}
+          htmlElement={(d) => {
+            const c = d as CountryProfile;
+            const el = document.createElement("div");
+            el.className = "pole-flag";
+            el.innerHTML =
+              `<span class="pole-flag-cloth">${flagFor(c.iso3)}</span>` +
+              `<span class="pole-flag-name">${c.country}</span>`;
+            return el;
+          }}
         />
-
-        {landed && (
-          <div className="globe-flag" key={flagKey}>
-            <span className="flag-emoji">{flagFor(landed.iso3)}</span>
-            <span>{landed.country}</span>
-          </div>
-        )}
       </div>
 
       {selected ? (

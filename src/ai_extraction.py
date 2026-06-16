@@ -15,18 +15,13 @@ are sent — never raw or toxic conversation text (see docs/ethics_policy.md).
 
 from __future__ import annotations
 
-import json
-import os
-
 import pandas as pd
 from pydantic import BaseModel
 from sqlalchemy import insert
 from sqlalchemy.engine import Engine
 
-from . import db
+from . import db, llm
 from .ai_topic_extraction import AI_TOPIC_EXTRACTION_PROMPT
-
-DEFAULT_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 
 
 # --- Structured output schema -------------------------------------------------
@@ -90,20 +85,17 @@ def _filter_description(country, topic, language, n) -> str:
     return f"{scope} ({n} conversations sampled)"
 
 
-# --- LLM call (Groq) ----------------------------------------------------------
+# --- LLM call (Groq primary, Claude fallback via src/llm) ---------------------
 
 def extract_topics(summaries: list[str], client=None, model: str | None = None) -> TopicExtractionResult:
-    """Send safe summaries to Groq and return the validated structured result.
+    """Send safe summaries to the LLM and return the validated structured result.
 
-    ``client`` is injectable (a stub in tests); when omitted we create a real
-    ``groq.Groq()`` which reads GROQ_API_KEY from the environment.
+    Routes through src/llm.chat (Groq with automatic Anthropic Claude fallback).
+    ``client`` injects a Groq stub in tests; ``model`` is accepted for back-compat
+    but the model is chosen per provider inside src/llm.
     """
     if not summaries:
         raise ValueError("No conversations matched the filters — nothing to analyze.")
-
-    if client is None:
-        from groq import Groq  # imported lazily so tests need no API key
-        client = Groq()
 
     schema_hint = (
         'Return ONLY valid JSON with this exact shape: '
@@ -115,16 +107,7 @@ def extract_topics(summaries: list[str], client=None, model: str | None = None) 
     system = AI_TOPIC_EXTRACTION_PROMPT + "\n\n" + schema_hint
     user = "Conversations to analyze:\n" + "\n".join(summaries)
 
-    completion = client.chat.completions.create(
-        model=model or DEFAULT_MODEL,
-        messages=[
-            {"role": "system", "content": system},
-            {"role": "user", "content": user},
-        ],
-        response_format={"type": "json_object"},
-        temperature=0.4,
-    )
-    content = completion.choices[0].message.content
+    content = llm.chat(system, user, json_mode=True, temperature=0.4, groq_client=client)
     return TopicExtractionResult.model_validate_json(content)
 
 

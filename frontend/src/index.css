@@ -298,49 +298,57 @@ button.primary {
   backdrop-filter: blur(4px);
 }
 
-/* Larger globe block: taller, and breaks out slightly wider than the text columns. */
+/* Larger globe block: taller, and breaks out of the content's 1200px cap so it
+   fills the full width available next to the sidebar. The globe canvas stays
+   centered inside it via .globe-wrap's flex centering. */
 .globe-wrap--large {
   min-height: 640px;
-  margin: 0 -12px;
+  width: calc(100vw - 260px - 72px); /* viewport - sidebar - content padding */
+  max-width: none;
+  margin: 0;
+}
+@media (max-width: 900px) {
+  .globe-wrap--large { width: calc(100vw - 210px - 72px); } /* sidebar shrinks to 210px */
+}
+@media (max-width: 720px) {
+  .globe-wrap--large { width: 100%; } /* sidebar stacks; content is full width */
 }
 
-/* Fly-to flag: pops up and waves when the camera lands on a country. */
-.globe-flag {
-  position: absolute;
-  top: 18px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 16px;
-  border-radius: 999px;
-  background: rgba(15, 20, 25, 0.72);
-  border: 1px solid var(--border);
-  color: #fff;
-  font-weight: 600;
-  backdrop-filter: blur(6px);
-  pointer-events: none;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-  animation: flag-pop 0.5s ease-out;
-}
-.flag-emoji {
-  font-size: 40px;
-  line-height: 1;
-  display: inline-block;
-  transform-origin: center bottom;
-  animation: flag-wave 1.3s ease-in-out infinite;
-}
-@keyframes flag-pop {
-  0%   { opacity: 0; transform: translateX(-50%) translateY(12px) scale(0.5); }
-  60%  { opacity: 1; transform: translateX(-50%) translateY(0) scale(1.12); }
-  100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
-}
 @keyframes flag-wave {
   0%, 100% { transform: rotate(-3deg) skewX(0deg); }
   25%      { transform: rotate(2deg) skewX(-8deg); }
   50%      { transform: rotate(-2deg) skewX(5deg); }
   75%      { transform: rotate(3deg) skewX(-4deg); }
+}
+
+/* Flag planted on the country's pole (react-globe.gl HTML element). */
+.pole-flag {
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  transform: translate(4px, -22px);   /* lift the cloth to the top of the pole */
+  white-space: nowrap;
+}
+.pole-flag-cloth {
+  font-size: 30px;
+  line-height: 1;
+  transform-origin: left center;       /* wave from the pole side */
+  animation: pole-pop 0.45s ease-out, flag-wave 1.2s ease-in-out 0.45s infinite;
+}
+.pole-flag-name {
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(15, 20, 25, 0.72);
+  border-radius: 6px;
+  padding: 1px 6px;
+}
+@keyframes pole-pop {
+  0%   { opacity: 0; transform: scale(0.2) rotate(-14deg); }
+  70%  { opacity: 1; transform: scale(1.15) rotate(4deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); }
 }
 .answer { background: var(--panel-2); border-left: 3px solid var(--accent); padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; }
 

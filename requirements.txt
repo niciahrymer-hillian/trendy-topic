@@ -23,7 +23,8 @@ sqlalchemy
 psycopg[binary]
 
 # --- LLM (AI topic extraction) ---
-groq           # provider for the AI topic-extraction workflow
+groq           # primary LLM provider (AI bot, topic extraction)
+anthropic      # automatic Claude fallback when Groq fails (LLM_PROVIDER to flip primary)
 pydantic       # validates the LLM's structured JSON output
 
 # --- Optional / future features ---
