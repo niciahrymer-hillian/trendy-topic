@@ -14,8 +14,9 @@ Three public entry points
 
 ``mask_pii(text)``
     Replace PII-like patterns (email, phone, SSN, credit-card, account number,
-    street address, IPv4) with ``[REDACTED]`` before any text reaches the
-    dashboard or an LLM prompt.
+    street address, IPv4) and credential-like patterns (API keys / access
+    tokens, long high-entropy blobs) with ``[REDACTED]`` before any text reaches
+    the dashboard or an LLM prompt.
 
 ``clean(df)``
     Convenience wrapper: runs ``apply_missing_rules`` then masks PII in every
@@ -110,6 +111,29 @@ MISSING_VALUE_RULES: Final[dict[str, dict]] = {
 
 # Each pattern is compiled once at module load.
 _PII_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
+    # API keys / access tokens pasted by dataset users (e.g. Facebook Graph API
+    # tokens in WildChat code prompts). Redacted FIRST so real secrets never
+    # reach the repo, the dashboard, or an LLM prompt — and so a commit cannot
+    # trip GitHub push protection.
+    (
+        "access_token",
+        re.compile(
+            r"EAA[0-9A-Za-z]{20,}"             # Facebook Graph API token
+            r"|sk-[A-Za-z0-9]{20,}"             # OpenAI-style secret key
+            r"|ghp_[A-Za-z0-9]{20,}"            # GitHub personal access token
+            r"|gho_[A-Za-z0-9]{20,}"            # GitHub OAuth token
+            r"|AIza[0-9A-Za-z_\-]{20,}"         # Google API key
+            r"|ya29\.[0-9A-Za-z_\-]{20,}"       # Google OAuth token
+            r"|xox[baprs]-[0-9A-Za-z\-]{10,}"   # Slack token
+        ),
+    ),
+    # High-entropy base64-ish blobs (40+ contiguous chars): inline image dumps,
+    # leftover token tails, hashes. Redacting these keeps secrets out and trims
+    # junk binary strings that add no analytical value.
+    (
+        "long_token_blob",
+        re.compile(r"(?<![A-Za-z0-9+/_\-])[A-Za-z0-9+/_\-]{40,}={0,2}(?![A-Za-z0-9+/=])"),
+    ),
     # E-mail address (RFC-5321-ish)
     (
         "email",
@@ -226,8 +250,9 @@ def mask_pii(text: object) -> str:
     """Replace PII-like patterns in *text* with ``[REDACTED]``.
 
     Patterns detected (in order):
-      email · phone · SSN · credit/debit card · account numbers (8-20 digits) ·
-      street addresses · IPv4 addresses.
+      access token / API key · long high-entropy blob · email · phone · SSN ·
+      credit/debit card · account numbers (8-20 digits) · street addresses ·
+      IPv4 addresses.
 
     A non-string input is returned as ``""`` (same contract as ``clean_text``).
     """
