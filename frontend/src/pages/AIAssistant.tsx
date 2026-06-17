@@ -209,7 +209,10 @@ function AskTab() {
       {resp && !loading && (
         <>
           <div className="answer"><SpokenText text={resp.answer} /></div>
-          <span className="pill">{resp.source === "ai" ? "AI — grounded in gathered data" : "from aggregated data"}{resp.intent ? ` · ${resp.intent}` : ""}</span>
+          <span className="pill">{resp.source === "ai" ? "AI — grounded in gathered data" : "basic answer (no AI synthesis)"}{resp.intent ? ` · ${resp.intent}` : ""}</span>
+          {resp.source !== "ai" && (
+            <p className="state error compact">⚠️ AI synthesis is offline, so this is a basic templated answer. Add a valid <code>GROQ_API_KEY</code> or <code>ANTHROPIC_API_KEY</code> to <code>.env</code> and restart the backend for full responses.</p>
+          )}
           {resp.comparison && (
             <>
               <ComparisonInline data={resp.comparison} />
