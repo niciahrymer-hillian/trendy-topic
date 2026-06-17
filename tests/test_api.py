@@ -50,10 +50,23 @@ def test_country_compare_requires_at_least_two_countries():
     assert resp.status_code == 400
 
 
-@pytest.mark.parametrize("by,expected", [("label", 12), ("category", 8)])
-def test_topics_by_param(by, expected):
-    body = client.get(f"/api/topics?by={by}").json()
-    assert len(body) == expected
+def test_topics_by_param_returns_taxonomy_labels_and_categories():
+    """Topics group by label or broad category; both stay within the taxonomy.
+
+    The broad ``general_information`` bucket was carved into sub-topics (sports,
+    science, finance, …), so there are now more than the original 12 labels /
+    8 categories — assert against the taxonomy rather than a frozen count.
+    """
+    from src import topic_classifier as tc
+
+    labels = client.get("/api/topics?by=label").json()
+    categories = client.get("/api/topics?by=category").json()
+
+    assert {t["topic_label"] for t in labels} <= set(tc.PROMPT_TOPIC_LABELS.values())
+    assert {t["topic_category"] for t in categories} <= set(tc.PROMPT_TOPIC_CATEGORY.values())
+    assert len(labels) >= 13
+    assert len(categories) >= 9
+    assert len(labels) > len(categories) > 0
 
 
 def test_topics_filtered_by_country_is_subset_of_global():

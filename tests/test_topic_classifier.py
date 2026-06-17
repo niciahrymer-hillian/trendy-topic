@@ -33,3 +33,17 @@ def test_classify_topic_fallback_picks_best_keyword_bucket():
 
 def test_classify_topic_empty_text_is_unknown():
     assert tc.classify_topic("")["topic_label"] == tc.UNKNOWN_LABEL
+
+
+def test_classify_topic_routes_sports_terms_to_sports():
+    # A search like "basketball" must land under Sports, not Science.
+    assert tc.classify_topic("basketball")["topic_label"] == "Sports"
+    assert tc.classify_topic("who won the world cup final")["topic_label"] == "Sports"
+
+
+def test_classify_prompt_topic_code_spreads_general_subtopics():
+    assert tc.classify_prompt_topic_code("how do I invest in the stock market") == "finance_money"
+    assert tc.classify_prompt_topic_code("explain the history of the roman empire") == "history_culture"
+    assert tc.classify_prompt_topic_code("a simple pasta recipe to cook tonight") == "food_cooking"
+    # Nothing recognisable falls back to the broad bucket.
+    assert tc.classify_prompt_topic_code("hello there") == "general_information"

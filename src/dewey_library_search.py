@@ -49,7 +49,8 @@ DEWEY_CLASSES: tuple[DeweyClass, ...] = (
         "agriculture", "cooking",
     )),
     DeweyClass("700", "Arts & recreation", (
-        "art", "music", "film", "sports", "game", "photography", "architecture",
+        "art", "music", "film", "sport", "sports", "basketball", "football",
+        "soccer", "game", "photography", "architecture",
     )),
     DeweyClass("800", "Literature", (
         "literature", "poetry", "novel", "fiction", "drama", "story",
@@ -162,6 +163,12 @@ DEWEY_SECTIONS: tuple[DeweyClass, ...] = (
     DeweyClass("700", "The arts", ("art", "drawing", "painting", "design", "illustration")),
     DeweyClass("780", "Music", ("music", "song", "instrument", "melody", "lyrics")),
     DeweyClass("791", "Film & games", ("film", "movie", "game", "gaming")),
+    DeweyClass("796", "Sports & recreation", (
+        "sport", "sports", "basketball", "football", "soccer", "tennis",
+        "golf", "cricket", "rugby", "baseball", "hockey", "olympic",
+        "olympics", "nba", "nfl", "fifa", "athlete", "championship",
+        "tournament", "world cup", "formula 1", "grand prix",
+    )),
     DeweyClass("641", "Cooking & food", ("cooking", "recipe", "food", "cuisine", "baking")),
     DeweyClass("320", "Politics & law", ("politics", "law", "government", "policy", "legal")),
     DeweyClass("910", "Travel & geography", ("travel", "geography", "tourism", "trip")),
