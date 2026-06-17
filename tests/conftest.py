@@ -22,8 +22,9 @@ def _no_external_api_keys(monkeypatch):
     an LLM/voice path inject a stub client directly instead of relying on a key.
     """
     for var in (
-        "GROQ_API_KEY", "ELEVENLABS_API_KEY", "GOOGLE_CLOUD_TRANSLATION_API_KEY",
-        "GOOGLE_APPLICATION_CREDENTIALS", "DEEPL_API_KEY", "DATABASE_URL",
+        "GROQ_API_KEY", "ANTHROPIC_API_KEY", "ELEVENLABS_API_KEY",
+        "GOOGLE_CLOUD_TRANSLATION_API_KEY", "GOOGLE_APPLICATION_CREDENTIALS",
+        "DEEPL_API_KEY", "DATABASE_URL",
     ):
         monkeypatch.delenv(var, raising=False)
 
