@@ -21,28 +21,52 @@ const FLAG: Record<string, string> = {
 // A small globe locked onto one country.
 function MiniGlobe({ country, isDark }: { country: CountryProfile; isDark: boolean }) {
   const ref = useRef<GlobeMethods | undefined>(undefined);
-  const [ready, setReady] = useState(false);
+
+  // Re-aim the camera whenever the chosen country changes (retry until the
+  // globe's imperative handle exists — no reliance on onGlobeReady).
   useEffect(() => {
-    const g = ref.current;
-    if (!g || !ready) return;
-    g.pointOfView({ lat: country.lat, lng: country.lng, altitude: 1.7 }, 800);
-    const controls = g.controls();
-    controls.autoRotate = true;
-    controls.autoRotateSpeed = 0.5;
-    // globeMaterial() is built asynchronously — guard so first mount doesn't throw.
-    const getMaterial = (g as unknown as { globeMaterial?: () => THREE.Material }).globeMaterial;
-    if (typeof getMaterial !== "function") return;
-    const m = getMaterial.call(g) as THREE.MeshPhongMaterial;
-    m.emissive = new THREE.Color("#ffffff");
-    m.emissiveIntensity = isDark ? 1.8 : 0.3;
-    m.needsUpdate = true;
-  }, [country, isDark, ready]);
+    let raf = 0, cancelled = false, tries = 0;
+    const aim = () => {
+      if (cancelled) return;
+      const g = ref.current;
+      if (g) {
+        g.pointOfView({ lat: country.lat, lng: country.lng, altitude: 1.7 }, 800);
+        const c = g.controls();
+        if (c) { c.autoRotate = true; c.autoRotateSpeed = 0.5; }
+        return;
+      }
+      if (tries++ < 120) raf = requestAnimationFrame(aim);
+    };
+    aim();
+    return () => { cancelled = true; cancelAnimationFrame(raf); };
+  }, [country]);
+
+  // City-light glow (self-healing loop; guards globeMaterial each frame).
+  useEffect(() => {
+    let raf = 0, cancelled = false;
+    const tick = () => {
+      if (cancelled) return;
+      const g = ref.current;
+      const getMaterial = g && (g as unknown as { globeMaterial?: () => THREE.Material }).globeMaterial;
+      if (typeof getMaterial === "function") {
+        const m = getMaterial.call(g) as THREE.MeshPhongMaterial;
+        if (isDark) {
+          if (m.map && m.emissiveMap !== m.map) { m.emissiveMap = m.map; m.emissive = new THREE.Color(0xfff2d6); m.needsUpdate = true; }
+          m.emissiveIntensity = 2.4 + Math.sin(performance.now() / 600) * 0.4;
+        } else if (m.emissiveIntensity !== 0) {
+          m.emissiveIntensity = 0;
+        }
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    tick();
+    return () => { cancelled = true; cancelAnimationFrame(raf); };
+  }, [isDark]);
 
   return (
     <div className="globe-wrap" style={{ minHeight: 320 }}>
       <Globe
         ref={ref}
-        onGlobeReady={() => setReady(true)}
         width={340}
         height={320}
         backgroundColor="rgba(0,0,0,0)"

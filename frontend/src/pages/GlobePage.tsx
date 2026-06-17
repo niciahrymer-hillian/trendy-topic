@@ -1,10 +1,14 @@
-// Interactive spinning globe (react-globe.gl / Three.js).
+// Interactive globe (react-globe.gl / Three.js).
 //
-// - Auto-rotates and is drag-to-spin (OrbitControls, built in).
-// - Each dataset country is a point preloaded with its analytics, shown on hover.
-// - Clicking a country (or a sidebar "Jump to" entry) flies the globe to it; on
-//   landing, the country's flag pops up and waves and a glow ring pulses there.
-// - Dark mode shows the night-lights earth texture with a stronger atmosphere glow.
+// - Drag to spin (OrbitControls); auto-spins as an attractor until you navigate.
+// - Each country is a raised "pole" point preloaded with its analytics.
+// - Click a pole (or a sidebar "Fly to" entry) to fly there; on landing the
+//   country's flag pops up over the pole and waves, and a glow ring pulses.
+// - Dark mode shows the night-lights earth with its city lights glowing.
+//
+// The flag is a plain pointer-events:none overlay tracked to the country with
+// getScreenCoords — NOT react-globe.gl's html-elements layer, which overlays the
+// canvas and was swallowing drags/clicks after the first selection.
 
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
@@ -25,7 +29,6 @@ const SENTIMENT_COLOR: Record<string, string> = {
   negative: "#ff7b72",
 };
 
-// ISO-3 -> flag emoji for the 8 pack countries (used for the fly-to flag pop).
 const FLAG: Record<string, string> = {
   USA: "🇺🇸", CAN: "🇨🇦", GBR: "🇬🇧", CHN: "🇨🇳",
   RUS: "🇷🇺", FRA: "🇫🇷", BRA: "🇧🇷", JPN: "🇯🇵",
@@ -47,96 +50,109 @@ function tooltip(d: CountryProfile, isDark: boolean): string {
   </div>`;
 }
 
+// Minimal shape of the imperative methods we use (not all are in the typings).
+type GlobeApi = GlobeMethods & {
+  globeMaterial?: () => THREE.Material;
+  getScreenCoords?: (lat: number, lng: number, alt?: number) => { x: number; y: number };
+  getCoords?: (lat: number, lng: number, alt?: number) => { x: number; y: number; z: number };
+  camera?: () => THREE.Camera;
+};
+
+const FLAG_ALT = 0.28; // altitude the flag sits at — just above the pole tip
+
 export default function GlobePage() {
   const { data, loading, error } = useFetch(() => api.countries(), []);
   const { isDark } = useTheme();
   const chartTheme = useChartTheme();
   const globeRef = useRef<GlobeMethods | undefined>(undefined);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const flagElRef = useRef<HTMLDivElement>(null);
   const flagTimer = useRef<number | undefined>(undefined);
   const [width, setWidth] = useState(900);
   const [height, setHeight] = useState(540);
   const [selected, setSelected] = useState<CountryProfile | null>(null);
   const [hovered, setHovered] = useState<CountryProfile | null>(null);
-  // The country we've finished flying to — drives the flag pop + glow ring.
   const [landed, setLanded] = useState<CountryProfile | null>(null);
-  // Idle attractor: rings pulse on every country until the user first interacts.
   const [interacted, setInteracted] = useState(false);
-  // react-globe.gl builds its material asynchronously; only touch it once ready.
-  const [ready, setReady] = useState(false);
+  // Refs so the animation loop reads the latest values without re-subscribing.
+  const interactedRef = useRef(false);
+  const landedRef = useRef<CountryProfile | null>(null);
   const { set } = useJump();
 
-  // Size the globe to its (now larger) container.
+  useEffect(() => { landedRef.current = landed; }, [landed]);
+
+  // Size the globe to its container.
   useEffect(() => {
-  const measure = () => {
-  const nextWidth = wrapRef.current?.clientWidth ?? 800;
-  setWidth(nextWidth);
-  setHeight(nextWidth < 760 ? 430 : 540);
-};
+    const measure = () => {
+      const nextWidth = wrapRef.current?.clientWidth ?? 800;
+      setWidth(nextWidth);
+      setHeight(nextWidth < 760 ? 430 : 560);
+    };
     measure();
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
   }, []);
 
-  // Idle attractor: slowly auto-spin until the user navigates to a country.
+  // One self-healing loop drives everything that needs the globe's Three.js
+  // internals (built asynchronously, with no reliable onGlobeReady here): idle
+  // spin, night-time city-light glow + twinkle, and positioning the flag overlay.
   useEffect(() => {
-    if (!ready) return;
-    const controls = globeRef.current?.controls();
-    if (!controls) return;
-    controls.autoRotate = true;
-    controls.autoRotateSpeed = 0.6;
-  }, [ready]);
-
-  // Glow the night-time city lights. Using the night texture as the emissive
-  // MAP (not a flat emissive colour) means only the bright pixels — the cities —
-  // light up, instead of washing the whole globe white. A gentle sine "twinkle"
-  // keeps them lively and bright enough to balance the dark side.
-  // Waits for onGlobeReady — globeMaterial() is built asynchronously.
-  useEffect(() => {
-    const globe = globeRef.current;
-    if (!globe || !ready) return;
-    const getMaterial = (globe as unknown as { globeMaterial?: () => THREE.Material }).globeMaterial;
-    if (typeof getMaterial !== "function") return;
-    const material = getMaterial.call(globe) as THREE.MeshPhongMaterial;
-
     let raf = 0;
     let cancelled = false;
-    const base = isDark ? 2.6 : 0;
+    let spinSpeedSet = false;
 
     const tick = () => {
       if (cancelled) return;
-      if (isDark) {
-        // The surface texture loads async; attach it as the emissive map once present.
-        // A warm-white emissive keeps the night map's golden city lights golden
-        // (like the reference) rather than washing them out, and makes the dark
-        // side glow with the cities to balance the darkness.
-        if (material.map && material.emissiveMap !== material.map) {
-          material.emissiveMap = material.map;
-          material.emissive = new THREE.Color(0xfff2d6);
-          material.needsUpdate = true;
+      const globe = globeRef.current as GlobeApi | undefined;
+      if (globe) {
+        const controls = globe.controls();
+        if (controls) {
+          controls.autoRotate = !interactedRef.current;
+          if (!spinSpeedSet) { controls.autoRotateSpeed = 0.55; spinSpeedSet = true; }
         }
-        // Twinkle: gently breathe the brightness so the cities feel alive.
-        material.emissiveIntensity = base + Math.sin(performance.now() / 600) * 0.45;
-      } else {
-        material.emissiveIntensity = 0;
+
+        // Track the flag overlay to the landed country's pole (front side only).
+        const flagEl = flagElRef.current;
+        const land = landedRef.current;
+        if (flagEl) {
+          if (land && typeof globe.getScreenCoords === "function" && wrapRef.current) {
+            const s = globe.getScreenCoords(land.lat, land.lng, FLAG_ALT);
+            let front = true;
+            if (typeof globe.getCoords === "function" && typeof globe.camera === "function") {
+              const c = globe.getCoords(land.lat, land.lng, 0);
+              const cam = globe.camera().position;
+              front = c.x * cam.x + c.y * cam.y + c.z * cam.z > 0;
+            }
+            const canvas = wrapRef.current.querySelector("canvas");
+            if (s && front && canvas) {
+              const cr = canvas.getBoundingClientRect();
+              const wr = wrapRef.current.getBoundingClientRect();
+              flagEl.style.display = "flex";
+              flagEl.style.left = `${cr.left - wr.left + s.x}px`;
+              flagEl.style.top = `${cr.top - wr.top + s.y}px`;
+            } else {
+              flagEl.style.display = "none";
+            }
+          } else {
+            flagEl.style.display = "none";
+          }
+        }
       }
       raf = requestAnimationFrame(tick);
     };
     tick();
     return () => { cancelled = true; cancelAnimationFrame(raf); };
-  }, [data, isDark, ready]);
+  }, []);
 
   useEffect(() => () => { if (flagTimer.current) window.clearTimeout(flagTimer.current); }, []);
 
   const flyTo = (d: CountryProfile) => {
+    interactedRef.current = true; // stop the idle spin so pointOfView lands cleanly
     setInteracted(true);
     setSelected(d);
-    setLanded(null); // hide the flag while the camera is flying
+    setLanded(null); // hide the flag while the camera flies
     if (flagTimer.current) window.clearTimeout(flagTimer.current);
-    // Keep auto-rotate on — disabling it stalled repeated pointOfView calls so
-    // the camera would only ever fly to the first country picked.
     globeRef.current?.pointOfView({ lat: d.lat, lng: d.lng, altitude: 1.6 }, 1000);
-    // Pop the flag (on the country's pole) once the ~1s fly-to animation lands.
     flagTimer.current = window.setTimeout(() => setLanded(d), 1050);
   };
 
@@ -157,8 +173,7 @@ export default function GlobePage() {
   if (loading) return <Loading />;
   if (error || !data) return <ErrorState message={error ?? "no data"} />;
 
-  // Before any interaction, pulse a ring on every country (attractor). After the
-  // user hovers/clicks, narrow the ring to just the selected/hovered country.
+  // Idle: pulse a ring on every country; after interaction, just the active one.
   const ringTargets: CountryProfile[] = interacted
     ? (selected ? [selected] : hovered ? [hovered] : [])
     : data;
@@ -167,67 +182,50 @@ export default function GlobePage() {
     <div>
       <PageHeader
         title="Interactive Globe"
-        subtitle="Drag to spin. Hover a country for its analytics; click to fly in — its flag waves on landing — and load details."
+        subtitle="Drag to spin. Click a country's pole to fly in — its flag waves on landing — and load details."
       />
 
-<div className="globe-wrap globe-wrap--large" ref={wrapRef}>
-  <div className="globe-hint">
-    Drag to spin • Scroll to zoom • Click a point to focus
-  </div>
-  <Globe
-    ref={globeRef}
-    onGlobeReady={() => setReady(true)}
-    width={width}
-    height={height}
-    rendererConfig={{
-      antialias: true,
-      alpha: true,
-      powerPreference: "high-performance",
-    }}
+      <div className="globe-wrap globe-wrap--large" ref={wrapRef}>
+        <div className="globe-hint">Drag to spin • Scroll to zoom • Click a pole to focus</div>
+        <Globe
+          ref={globeRef}
+          width={width}
+          height={height}
+          rendererConfig={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
           backgroundColor="rgba(0,0,0,0)"
-          globeImageUrl={
-            isDark
-              ? "//unpkg.com/three-globe/example/img/earth-night.jpg"
-              : "//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
-          }
+          globeImageUrl="//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
           bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
           showAtmosphere
           atmosphereColor={isDark ? "#7fd3ff" : "#1f7bff"}
-          atmosphereAltitude={isDark ? 0.45 : 0.2}
-          showGraticules
+          atmosphereAltitude={isDark ? 0.4 : 0.2}
           pointsData={data}
           pointLat={(d) => (d as CountryProfile).lat}
           pointLng={(d) => (d as CountryProfile).lng}
-          pointAltitude={0.24}
-          pointRadius={1.05}
+          pointAltitude={0.22}
+          pointRadius={0.9}
           pointResolution={18}
           pointColor={(d) => SENTIMENT_COLOR[(d as CountryProfile).dominant_sentiment] ?? "#4aa8ff"}
           pointLabel={(d) => tooltip(d as CountryProfile, isDark)}
           onPointHover={(d) => { if (d) setInteracted(true); setHovered((d as CountryProfile) ?? null); }}
           onPointClick={(d) => flyTo(d as CountryProfile)}
-          // Pulsing glow ring on the country we just landed on.
           ringsData={ringTargets}
           ringLat={(d) => (d as CountryProfile).lat}
           ringLng={(d) => (d as CountryProfile).lng}
           ringColor={() => (t: number) => `rgba(127,211,255,${1 - t})`}
-          ringMaxRadius={10}
-          ringPropagationSpeed={3}
-          ringRepeatPeriod={1400}
-          // Flag planted on the country's pole — pops out of the pole and waves on landing.
-          htmlElementsData={landed ? [landed] : []}
-          htmlLat={(d) => (d as CountryProfile).lat}
-          htmlLng={(d) => (d as CountryProfile).lng}
-          htmlAltitude={0.24}
-          htmlElement={(d) => {
-            const c = d as CountryProfile;
-            const el = document.createElement("div");
-            el.className = "pole-flag";
-            el.innerHTML =
-              `<span class="pole-flag-cloth">${flagFor(c.iso3)}</span>` +
-              `<span class="pole-flag-name">${c.country}</span>`;
-            return el;
-          }}
+          ringMaxRadius={5}
+          ringPropagationSpeed={2}
+          ringRepeatPeriod={1300}
         />
+
+        {/* Pole flag — pointer-events:none overlay tracked to the country in the loop. */}
+        <div className="pole-flag" ref={flagElRef} style={{ display: "none" }} aria-hidden="true">
+          {landed && (
+            <>
+              <span className="pole-flag-cloth">{flagFor(landed.iso3)}</span>
+              <span className="pole-flag-name">{landed.country}</span>
+            </>
+          )}
+        </div>
       </div>
 
       {selected ? (

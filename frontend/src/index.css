@@ -321,13 +321,18 @@ button.primary {
   75%      { transform: rotate(3deg) skewX(-4deg); }
 }
 
-/* Flag planted on the country's pole (react-globe.gl HTML element). */
+/* Flag over the country's pole — a pointer-events:none overlay positioned (left/top)
+   by the globe loop via getScreenCoords, anchored so it sits just above the point. */
 .pole-flag {
+  position: absolute;
+  left: 0;
+  top: 0;
   pointer-events: none;
+  z-index: 3;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  transform: translate(4px, -22px);   /* lift the cloth to the top of the pole */
+  align-items: center;
+  transform: translate(-50%, -115%);
   white-space: nowrap;
 }
 .pole-flag-cloth {
