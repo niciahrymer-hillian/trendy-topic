@@ -24,6 +24,17 @@ If the Python interpreter is not already selected in VS Code, point it to:
 
 `/Users/shocka/trendy-topic/.venv/bin/python`
 
+## Demo & Presentation
+
+Two ready-to-present, click-through scripts (assigned speaking roles, exact
+pages, and word-for-word talk tracks) live in `docs/`:
+
+- [`docs/demo_script_full.md`](docs/demo_script_full.md) — **3–5 minute** demo
+  covering the full flow: pipeline, map, country analysis, language analysis,
+  sentiment, wow factor, Ask the Dataset, translation, and voice.
+- [`docs/presentation_180s.md`](docs/presentation_180s.md) — tight **180-second**
+  two-presenter walkthrough hitting the highlight features.
+
 ## Dewey Indexing for Full WildChat
 
 To stream prompts from Hugging Face WildChat and map each prompt into a Dewey class:
