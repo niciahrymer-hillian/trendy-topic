@@ -34,6 +34,10 @@ pages, and word-for-word talk tracks) live in `docs/`:
   sentiment, wow factor, Ask the Dataset, translation, and voice.
 - [`docs/presentation_180s.md`](docs/presentation_180s.md) — tight **180-second**
   two-presenter walkthrough hitting the highlight features.
+- [`docs/slide_outline.md`](docs/slide_outline.md) — a **slide-deck outline**
+  (problem → solution → data → architecture → pipeline → dashboard → insights →
+  ethics → portfolio value) that tells the full story **without the live app** —
+  a safe fallback if the demo hits technical issues.
 
 ## Dewey Indexing for Full WildChat
 
