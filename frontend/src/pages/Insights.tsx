@@ -9,7 +9,7 @@ export default function Insights() {
   return (
     <div>
       <div className="controls" role="tablist">
-        <button className={tab === "wow" ? "primary" : ""} onClick={() => setTab("wow")}>Wow-Factor</button>
+        <button className={tab === "wow" ? "primary" : ""} onClick={() => setTab("wow")}>Insights</button>
         <button className={tab === "ai" ? "primary" : ""} onClick={() => setTab("ai")}>AI Insights</button>
       </div>
       {tab === "wow" ? <Wow /> : <AIInsights />}

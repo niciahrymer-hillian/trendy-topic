@@ -78,24 +78,52 @@ export default function GlobePage() {
     return () => window.removeEventListener("resize", measure);
   }, []);
 
-  // Auto-rotate + make the night-lights texture glow via emissive lighting.
-  // Waits for onGlobeReady — the material is built asynchronously, so touching
-  // it on first mount throws "globeMaterial is not a function".
+  // Idle attractor: slowly auto-spin until the user navigates to a country.
+  useEffect(() => {
+    if (!ready) return;
+    const controls = globeRef.current?.controls();
+    if (!controls) return;
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 0.6;
+  }, [ready]);
+
+  // Glow the night-time city lights. Using the night texture as the emissive
+  // MAP (not a flat emissive colour) means only the bright pixels — the cities —
+  // light up, instead of washing the whole globe white. A gentle sine "twinkle"
+  // keeps them lively and bright enough to balance the dark side.
+  // Waits for onGlobeReady — globeMaterial() is built asynchronously.
   useEffect(() => {
     const globe = globeRef.current;
     if (!globe || !ready) return;
-
-    const controls = globe.controls();
-    controls.autoRotate = true;
-    controls.autoRotateSpeed = 0.6;
-
-    // globeMaterial() exists at runtime but isn't in this version's typings.
     const getMaterial = (globe as unknown as { globeMaterial?: () => THREE.Material }).globeMaterial;
     if (typeof getMaterial !== "function") return;
     const material = getMaterial.call(globe) as THREE.MeshPhongMaterial;
-    material.emissive = new THREE.Color("#ffffff");
-    material.emissiveIntensity = isDark ? 1.8 : 0.3;
-    material.needsUpdate = true;
+
+    let raf = 0;
+    let cancelled = false;
+    const base = isDark ? 2.6 : 0;
+
+    const tick = () => {
+      if (cancelled) return;
+      if (isDark) {
+        // The surface texture loads async; attach it as the emissive map once present.
+        // A warm-white emissive keeps the night map's golden city lights golden
+        // (like the reference) rather than washing them out, and makes the dark
+        // side glow with the cities to balance the darkness.
+        if (material.map && material.emissiveMap !== material.map) {
+          material.emissiveMap = material.map;
+          material.emissive = new THREE.Color(0xfff2d6);
+          material.needsUpdate = true;
+        }
+        // Twinkle: gently breathe the brightness so the cities feel alive.
+        material.emissiveIntensity = base + Math.sin(performance.now() / 600) * 0.45;
+      } else {
+        material.emissiveIntensity = 0;
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    tick();
+    return () => { cancelled = true; cancelAnimationFrame(raf); };
   }, [data, isDark, ready]);
 
   useEffect(() => () => { if (flagTimer.current) window.clearTimeout(flagTimer.current); }, []);
@@ -105,6 +133,8 @@ export default function GlobePage() {
     setSelected(d);
     setLanded(null); // hide the flag while the camera is flying
     if (flagTimer.current) window.clearTimeout(flagTimer.current);
+    // Keep auto-rotate on — disabling it stalled repeated pointOfView calls so
+    // the camera would only ever fly to the first country picked.
     globeRef.current?.pointOfView({ lat: d.lat, lng: d.lng, altitude: 1.6 }, 1000);
     // Pop the flag (on the country's pole) once the ~1s fly-to animation lands.
     flagTimer.current = window.setTimeout(() => setLanded(d), 1050);

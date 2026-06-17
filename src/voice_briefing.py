@@ -59,14 +59,14 @@ def build_script(df: pd.DataFrame, country: str | None = None, topic: str | None
     pos = int(sent.loc[sent["sentiment_label"] == "positive", "conversations"].sum())
     pos_pct = round(100 * pos / n, 1)
 
-    topic_clause = f", focused on {topic}," if topic else ""
+    who = f"{country} users" if country else "users around the world"
+    topic_clause = f", and we zoomed in on {topic}" if topic else ""
     return " ".join([
-        f"Here is your AI conversation briefing for {scope}.",
-        f"We analyzed {n} safe conversations{topic_clause}.",
-        f"The most discussed topics are {', '.join(topics)}.",
-        f"{top_lang} is the leading language, at {lang_share} percent of conversations.",
-        f"Overall sentiment skews positive, with about {pos_pct} percent reading positive.",
-        "That's your trend snapshot. Thanks for listening.",
+        f"Hello! We analyzed {n} conversations from {who}{topic_clause}.",
+        f"The questions people asked most were about {', '.join(topics)}.",
+        f"Most folks chatted in {top_lang} — about {lang_share} percent of them.",
+        f"And the mood? Pretty upbeat: roughly {pos_pct} percent of the conversations felt positive.",
+        "That's your quick trend snapshot. Thanks for listening!",
     ])
 
 

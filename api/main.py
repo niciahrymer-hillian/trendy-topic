@@ -342,6 +342,52 @@ def translate_summary(conversation_id: str, target_language: str) -> dict:
     }
 
 
+@app.get("/api/translate-country")
+def translate_country(country: str) -> dict:
+    """Translate a representative safe summary for a country into its dominant
+    local language, returning English + local side by side. When that dominant
+    language is English (the WildChat sample is English-heavy) there is nothing
+    to translate, so we return a note explaining the English->English case."""
+    df = _df().copy()
+    df["summary_text"] = _summary_text(df)
+    sub = df[df["country"] == country]
+    if sub.empty:
+        raise HTTPException(status_code=404, detail=f"No conversations found for {country}.")
+
+    target_language = str(sub["language"].mode().iloc[0])
+    lang_share = int(round(100 * (sub["language"] == target_language).mean()))
+    row = sub.iloc[0]
+    original_text = str(row["summary_text"])
+    source_language = str(row["language"])
+    provider = os.getenv("TRANSLATION_PROVIDER", "groq")
+    is_english = target_language.strip().lower() in {"english", "en"}
+
+    try:
+        english_text = tr.translate_to_english(
+            text=original_text, source_language=source_language, provider=provider,
+        )
+        local_text = english_text if is_english else tr.translate_from_english(
+            text=english_text, target_language=target_language, provider=provider,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Translation failed: {e}")
+
+    note = None
+    if is_english:
+        note = (
+            f"Conversations from {country} in this sample were predominantly in English "
+            f"(about {lang_share}%), so there is no separate local-language translation to show."
+        )
+
+    return {
+        "country": country,
+        "target_language": target_language,
+        "english_text": english_text,
+        "local_text": local_text,
+        "note": note,
+    }
+
+
 @app.post("/api/voice-brief")
 def voice_brief(
     country: str | None = None,
@@ -955,4 +1001,24 @@ def voice_audio(country: str | None = None, topic: str | None = None, language: 
         except Exception:
             pass  # storage is best-effort; audio still returns
 
+    return Response(content=audio, media_type="audio/mpeg")
+
+
+@app.post("/api/tts")
+def tts(text: str = Query(..., min_length=1)):
+    """Generic text-to-speech via ElevenLabs — the default AI-assistant voice.
+
+    Powers the speaker buttons across the AI Assistant (Ask answers, translations,
+    the voice briefing). Text is capped at the safe length used for voicing.
+    """
+    if not os.getenv("ELEVENLABS_API_KEY"):
+        raise HTTPException(status_code=503, detail="ELEVENLABS_API_KEY is not configured.")
+    from src import voice_briefing as vb
+
+    try:
+        audio = vb.synthesize(text[:1500])
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Voice synthesis failed: {e}")
     return Response(content=audio, media_type="audio/mpeg")

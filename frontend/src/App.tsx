@@ -8,8 +8,6 @@ const Compare = lazy(() => import("./pages/Compare"));
 const Explore = lazy(() => import("./pages/Explore"));
 const Insights = lazy(() => import("./pages/Insights"));
 const AIAssistant = lazy(() => import("./pages/AIAssistant"));
-const LibrarySearch = lazy(() => import("./pages/LibrarySearch"));
-const DeweyPrompts = lazy(() => import("./pages/DeweyPrompts"));
 const DeweyTaxonomy = lazy(() => import("./pages/DeweyTaxonomy"));
 
 export default function App() {
@@ -24,8 +22,6 @@ export default function App() {
           <Route path="explore" element={<Explore />} />
           <Route path="insights" element={<Insights />} />
           <Route path="ai-assistant" element={<AIAssistant />} />
-          <Route path="library" element={<LibrarySearch />} />
-          <Route path="dewey-prompts" element={<DeweyPrompts />} />
           <Route path="dewey-taxonomy" element={<DeweyTaxonomy />} />
         </Route>
       </Routes>

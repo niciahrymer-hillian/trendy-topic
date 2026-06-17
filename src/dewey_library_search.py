@@ -114,11 +114,94 @@ def _embedding_rank(query: str) -> list[tuple[float, DeweyClass]]:
     )
 
 
+# Section-level Dewey numbers (full/specific) for the domains this dataset covers.
+# Searched before the broad main classes so a topic resolves to a precise number
+# (e.g. "machine learning" -> 006.3) instead of just the top-level class ("000").
+DEWEY_SECTIONS: tuple[DeweyClass, ...] = (
+    DeweyClass("006.3", "Artificial intelligence", (
+        "ai", "artificial intelligence", "machine learning", "deep learning",
+        "neural network", "llm", "large language model", "chatbot", "generative",
+    )),
+    DeweyClass("005.1", "Computer programming", (
+        "programming", "coding", "code", "developer", "python", "javascript",
+        "software", "debug", "algorithm", "function", "api",
+    )),
+    DeweyClass("005.8", "Data security", (
+        "cybersecurity", "security", "encryption", "hacking", "malware", "privacy",
+    )),
+    DeweyClass("004", "Computer science & data processing", (
+        "computer", "data", "internet", "network", "hardware", "cloud",
+    )),
+    DeweyClass("401", "Language & translation", (
+        "language", "translation", "translate", "linguistics", "grammar",
+        "vocabulary", "bilingual",
+    )),
+    DeweyClass("808", "Writing & composition", (
+        "writing", "essay", "poetry", "story", "novel", "composition", "blog",
+    )),
+    DeweyClass("610", "Medicine & health", (
+        "health", "medicine", "medical", "disease", "doctor", "symptom",
+        "therapy", "diet", "nutrition",
+    )),
+    DeweyClass("150", "Psychology", (
+        "psychology", "mind", "emotion", "behavior", "anxiety", "stress",
+    )),
+    DeweyClass("330", "Economics & finance", (
+        "economics", "finance", "money", "investment", "stock", "market", "crypto",
+    )),
+    DeweyClass("650", "Business & management", (
+        "business", "marketing", "management", "entrepreneur", "startup", "sales",
+    )),
+    DeweyClass("370", "Education", (
+        "education", "teaching", "school", "study", "homework", "student", "exam",
+    )),
+    DeweyClass("510", "Mathematics", (
+        "math", "mathematics", "algebra", "geometry", "calculus", "statistics",
+    )),
+    DeweyClass("570", "Biology", ("biology", "cell", "gene", "organism", "evolution")),
+    DeweyClass("700", "The arts", ("art", "drawing", "painting", "design", "illustration")),
+    DeweyClass("780", "Music", ("music", "song", "instrument", "melody", "lyrics")),
+    DeweyClass("791", "Film & games", ("film", "movie", "game", "gaming")),
+    DeweyClass("641", "Cooking & food", ("cooking", "recipe", "food", "cuisine", "baking")),
+    DeweyClass("320", "Politics & law", ("politics", "law", "government", "policy", "legal")),
+    DeweyClass("910", "Travel & geography", ("travel", "geography", "tourism", "trip")),
+    DeweyClass("900", "History", ("history", "war", "ancient", "civilization")),
+    DeweyClass("200", "Religion", ("religion", "theology", "faith", "spiritual", "prayer")),
+    DeweyClass("100", "Philosophy & ethics", ("philosophy", "ethics", "logic", "moral")),
+)
+
+
+def _section_rank(query: str) -> list[tuple[int, DeweyClass]]:
+    scored = [(sum(1 for kw in s.keywords if kw in query), s) for s in DEWEY_SECTIONS]
+    scored.sort(key=lambda item: item[0], reverse=True)
+    return scored
+
+
 def infer_dewey_with_rerank(topic: str) -> dict:
-    """Infer Dewey class using keyword scoring, then TF-IDF reranking when available."""
+    """Infer Dewey class using keyword scoring, then TF-IDF reranking when available.
+
+    Resolves to a specific section-level number (e.g. 006.3) when the topic matches
+    a known section; otherwise falls back to the broad main-class inference.
+    """
     query = (topic or "").strip().lower()
     if not query:
         raise ValueError("Topic is required.")
+
+    # Prefer a precise section-level number when the topic clearly matches one.
+    section_rank = _section_rank(query)
+    if section_rank[0][0] > 0:
+        best = section_rank[0][1]
+        alternatives = [
+            {"number": s.number, "name": s.name}
+            for score, s in section_rank[1:4]
+            if score > 0
+        ]
+        return {
+            "number": best.number,
+            "name": best.name,
+            "alternatives": alternatives,
+            "method": "section-keyword",
+        }
 
     keyword_rank: list[tuple[float, DeweyClass]] = []
     for entry in DEWEY_CLASSES:

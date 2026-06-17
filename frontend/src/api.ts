@@ -30,6 +30,7 @@ import type {
   TopicDetail,
   TopicHierarchyItem,
   TranslationResult,
+  CountryTranslation,
   TranslationSummary,
   TrendMetric,
   TrendPoint,
@@ -119,6 +120,18 @@ export const api = {
     post<TranslationResult>(
       `/api/translate-summary?conversation_id=${encodeURIComponent(conversationId)}&target_language=${encodeURIComponent(targetLanguage)}`
     ),
+  translateCountry: (country: string) =>
+    get<CountryTranslation>(`/api/translate-country?country=${encodeURIComponent(country)}`),
+  // Generic ElevenLabs TTS — the default AI-assistant voice. Returns MP3 bytes.
+  tts: async (text: string): Promise<Blob> => {
+    const res = await fetch(`/api/tts?text=${encodeURIComponent(text.slice(0, 1500))}`, { method: "POST" });
+    if (!res.ok) {
+      let detail = `${res.status} ${res.statusText}`;
+      try { const body = await res.json(); if (body?.detail) detail = body.detail; } catch { /* non-JSON */ }
+      throw new Error(detail);
+    }
+    return res.blob();
+  },
   heatmap: () => get<HeatmapCell[]>("/api/heatmap"),
   languageTopics: () => get<LanguageTopicCell[]>("/api/language-topics"),
   ask: (q: string) => get<AskResponse>(`/api/ask?q=${encodeURIComponent(q)}`),

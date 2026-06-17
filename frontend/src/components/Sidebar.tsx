@@ -11,9 +11,7 @@ const NAV = [
   { to: "/explore", label: "Explore" },
   { to: "/insights", label: "Insights" },
   { to: "/ai-assistant", label: "AI Assistant" },
-  { to: "/library", label: "Library Search" },
   { to: "/dewey-taxonomy", label: "Dewey Classification" },
-  { to: "/dewey-prompts", label: "Dewey Prompt Explorer" },
 ];
 
 export default function Sidebar() {

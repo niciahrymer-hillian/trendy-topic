@@ -163,6 +163,14 @@ export interface TranslationResult {
   provider: string;
 }
 
+export interface CountryTranslation {
+  country: string;
+  target_language: string;
+  english_text: string;
+  local_text: string;
+  note: string | null;
+}
+
 export interface HeatmapCell {
   country: string;
   topic_label: string;

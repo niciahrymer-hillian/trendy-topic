@@ -124,5 +124,7 @@ def test_run_hf_index_job_resume_from_checkpoint(tmp_path, monkeypatch):
 
 
 def test_infer_dewey_with_rerank_keeps_programming_in_000():
+    # Programming now resolves to a specific section (e.g. 005.1 Computer
+    # programming) but must stay within the 000 computer-science class.
     dewey = dls.infer_dewey_with_rerank("help me debug python code and optimize algorithms")
-    assert dewey["number"] == "000"
+    assert dewey["number"].startswith("00")
