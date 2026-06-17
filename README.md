@@ -666,7 +666,6 @@ global-ai-conversation-analytics/
 └── docs/
     ├── data_dictionary.md
     ├── ethics_policy.md
-    ├── feature_coverage_matrix.md
     ├── demo_script.md
     └── capstone_pitch.md
 ```

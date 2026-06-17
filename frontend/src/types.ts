@@ -187,6 +187,9 @@ export interface AskResponse {
   answer: string;
   table: Record<string, string | number>[];
   source?: "rules" | "ai";
+  intent?: string;
+  comparison?: CountryComparisonResponse;
+  library?: LibrarySearchResponse;
 }
 
 export interface ExtractedTopic {

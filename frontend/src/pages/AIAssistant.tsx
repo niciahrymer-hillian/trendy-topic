@@ -4,11 +4,14 @@
 
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import type { EChartsOption } from "echarts";
 import { api } from "../api";
 import { useFetch } from "../useFetch";
 import { useJump } from "../jump";
+import { useChartTheme } from "../charts";
 import { ErrorState, Loading, PageHeader, Section, Table } from "../components/Ui";
-import type { AskResponse, CountryTranslation, LibrarySearchResponse } from "../types";
+import EChart from "../components/EChart";
+import type { AskResponse, CountryComparisonResponse, CountryTranslation, LibrarySearchResponse } from "../types";
 
 type Tab = "ask" | "translate" | "voice" | "library";
 const TABS: { id: Tab; label: string }[] = [
@@ -147,52 +150,74 @@ export default function AIAssistant() {
   );
 }
 
-// --- Ask (ElevenLabs voice; routes comparisons + resource asks) --------------
-const COMPARE_RE = /\b(compare|comparison|versus|vs\.?|difference between)\b/i;
-const RESOURCE_RE = /\b(resource|resources|article|articles|book|books|reading|read about|more info|learn more|reference|study)\b/i;
+// --- Ask (agentic: gathers data per question, renders comparison/resources) ---
+type Row = { country: string } & Record<string, string | number>;
+
+function groupedBar(rows: Row[], xKey: string, countries: string[], textColor: string): EChartsOption {
+  const xs = [...new Set(rows.map((r) => String(r[xKey])))];
+  return {
+    tooltip: { trigger: "axis" },
+    legend: { top: 0, textStyle: { color: textColor } },
+    grid: { top: 40, left: 44, right: 16, bottom: 84 },
+    xAxis: { type: "category", data: xs, axisLabel: { rotate: 30 } },
+    yAxis: { type: "value" },
+    series: countries.map((c) => ({
+      name: c, type: "bar",
+      data: xs.map((x) => rows.filter((r) => String(r[xKey]) === x && r.country === c)
+        .reduce((a, r) => a + Number(r.conversations), 0)),
+    })),
+  };
+}
+
+function ComparisonInline({ data }: { data: CountryComparisonResponse }) {
+  const chartTheme = useChartTheme();
+  return (
+    <>
+      <h2>Comparing {data.countries.join(" vs ")}</h2>
+      <div className="grid-2">
+        <div><h2>Top topics</h2><EChart option={groupedBar(data.topics as unknown as Row[], "topic_category", data.countries, chartTheme.text)} /></div>
+        <div><h2>Sentiment</h2><EChart option={groupedBar(data.sentiment as unknown as Row[], "sentiment_label", data.countries, chartTheme.text)} /></div>
+      </div>
+    </>
+  );
+}
 
 function AskTab() {
   const navigate = useNavigate();
   const [q, setQ] = useState("");
   const [resp, setResp] = useState<AskResponse | null>(null);
   const [loading, setLoading] = useState(false);
-  const [library, setLibrary] = useState<LibrarySearchResponse | null>(null);
-  const [showCompare, setShowCompare] = useState(false);
 
   const run = async (question: string) => {
     if (!question.trim()) return;
-    setLoading(true); setLibrary(null);
-    setShowCompare(COMPARE_RE.test(question));
-    try {
-      // A resource/"more info" ask taps the library lookup system.
-      if (RESOURCE_RE.test(question)) {
-        try { setLibrary(await api.librarySearch(question, 5)); } catch { /* best effort */ }
-      }
-      setResp(await api.ask(question));
-    } finally {
-      setLoading(false);
-    }
+    setLoading(true);
+    try { setResp(await api.ask(question)); }
+    finally { setLoading(false); }
   };
   const columns = resp?.table?.length ? Object.keys(resp.table[0]) : [];
 
   return (
     <Section title="Ask the dataset">
+      <p className="hint">Ask anything — the assistant figures out what data to gather (comparisons, sentiment, trends, resources) and answers from it.</p>
       <div className="controls">
         <input type="text" style={{ flex: 1, minWidth: 280 }}
-          placeholder="e.g. Compare coding interest in Japan and Brazil"
+          placeholder="e.g. Compare coding interest in Japan and Brazil, or 'resources about machine learning'"
           value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === "Enter" && run(q)} />
         <button className="primary" onClick={() => run(q)}>Ask</button>
       </div>
-      {loading && <p className="state compact">Thinking…</p>}
+      {loading && <p className="state compact">Gathering data…</p>}
       {resp && !loading && (
         <>
           <div className="answer"><SpokenText text={resp.answer} /></div>
-          <span className="pill">{resp.source === "ai" ? "Groq (grounded in aggregates)" : "from aggregated data"}</span>
-          {showCompare && (
-            <p className="hint">Looks like a comparison — <button className="primary" onClick={() => navigate("/compare")}>Open Compare Countries</button></p>
+          <span className="pill">{resp.source === "ai" ? "AI — grounded in gathered data" : "from aggregated data"}{resp.intent ? ` · ${resp.intent}` : ""}</span>
+          {resp.comparison && (
+            <>
+              <ComparisonInline data={resp.comparison} />
+              <p className="hint"><button className="primary" onClick={() => navigate("/compare")}>Open full Compare</button></p>
+            </>
           )}
-          {columns.length > 0 && <Table columns={columns} rows={resp.table} />}
-          {library && <LibraryResults res={library} title="Resources for this topic" />}
+          {resp.library && <LibraryResults res={resp.library} title="Dewey-labeled resources" />}
+          {!resp.comparison && !resp.library && columns.length > 0 && <Table columns={columns} rows={resp.table} />}
         </>
       )}
     </Section>

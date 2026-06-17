@@ -1,3 +1,4 @@
+
 """FastAPI backend for Trendy Topic.
 
 Wraps the framework-agnostic analysis layer (src/analysis.py) as a small JSON API

@@ -46,5 +46,3 @@ assets/audio/*
 # and the docs/kanban tables. (Negations must follow the ignore rules above.)
 !frontend/*.json
 !data/wildchat_country_csv_pack/*.csv
-!docs/*.csv
-!global_ai_conversation_analytics_kanban_cards.csv
