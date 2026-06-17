@@ -61,9 +61,13 @@ def build_script(df: pd.DataFrame, country: str | None = None, topic: str | None
 
     who = f"{country} users" if country else "users around the world"
     topic_clause = f", and we zoomed in on {topic}" if topic else ""
+    if len(topics) > 1:
+        topics_phrase = f"{', '.join(topics[:-1])}, and {topics[-1]}"
+    else:
+        topics_phrase = topics[0] if topics else "a range of subjects"
     return " ".join([
         f"Hello! We analyzed {n} conversations from {who}{topic_clause}.",
-        f"The questions people asked most were about {', '.join(topics)}.",
+        f"The questions people asked most were about {topics_phrase}.",
         f"Most folks chatted in {top_lang} — about {lang_share} percent of them.",
         f"And the mood? Pretty upbeat: roughly {pos_pct} percent of the conversations felt positive.",
         "That's your quick trend snapshot. Thanks for listening!",
