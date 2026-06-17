@@ -7,7 +7,7 @@ import { useFetch } from "../useFetch";
 import { useJump } from "../jump";
 import { ErrorState, Loading, Metrics, PageHeader, Section, Table } from "../components/Ui";
 import EChart from "../components/EChart";
-import { hBarOption, multiLineOption, useChartTheme } from "../charts";
+import { groupedBarOption, hBarOption, multiLineOption, useChartTheme } from "../charts";
 
 export default function Topics() {
   const list = useFetch(() => api.topics("label"), []);
@@ -87,6 +87,7 @@ export default function Topics() {
   );
 
   const selectedTrendRows = (trends.data ?? []).filter((row) => selectedTopics.includes(row.topic_label));
+  const monthsInRange = new Set(selectedTrendRows.map((row) => row.month)).size;
 
   const trendSummaryRows = selectedTopics
     .map((selectedTopic) => {
@@ -185,13 +186,23 @@ export default function Topics() {
         {selectedTopics.length ? (
           <>
             <EChart
-              option={multiLineOption(
-                selectedTrendRows as unknown as Record<string, string | number>[],
-                "month",
-                "topic_label",
-                "conversations"
-              )}
-              height={420}
+              option={
+                monthsInRange <= 4
+                  ? groupedBarOption(
+                      selectedTrendRows as unknown as Record<string, string | number>[],
+                      "topic_label",
+                      "month",
+                      "conversations",
+                      chartTheme
+                    )
+                  : multiLineOption(
+                      selectedTrendRows as unknown as Record<string, string | number>[],
+                      "month",
+                      "topic_label",
+                      "conversations"
+                    )
+              }
+              height={Math.max(320, selectedTopics.length * 54)}
             />
             <Table
               columns={[

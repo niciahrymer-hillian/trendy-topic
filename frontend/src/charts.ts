@@ -177,3 +177,51 @@ export function hBarOption(rows: Row[], labelKey: string, valKey: string, color:
     series: [{ type: "bar", data: values, itemStyle: { color } }],
   };
 }
+
+/**
+ * Grouped horizontal bar: one bar per group (e.g. month) for each category (e.g.
+ * topic). Reads far better than a 2-point line chart when comparing a handful of
+ * categories across only a few periods. Categories keep their incoming order
+ * (already sorted by volume by the caller); bars get rounded corners + value
+ * labels so it presents cleanly.
+ */
+export function groupedBarOption(
+  rows: Row[],
+  categoryKey: string,
+  groupKey: string,
+  valKey: string,
+  chartTheme: ChartTheme
+): EChartsOption {
+  const categories = [...new Set(rows.map((r) => String(r[categoryKey])))];
+  const groups = [...new Set(rows.map((r) => String(r[groupKey])))].sort();
+  // Reverse so the first (highest-volume) category sits at the top of the y-axis.
+  const yData = [...categories].reverse();
+  const series = groups.map((group, i) => ({
+    name: group,
+    type: "bar" as const,
+    barMaxWidth: 22,
+    itemStyle: { color: chartTheme.series[i % chartTheme.series.length], borderRadius: [0, 4, 4, 0] },
+    label: {
+      show: true,
+      position: "right" as const,
+      color: chartTheme.muted,
+      fontSize: 11,
+      formatter: (p: { value: unknown }) => {
+        const v = Number(p.value);
+        return v ? v.toLocaleString() : "";
+      },
+    },
+    data: yData.map((cat) => {
+      const m = rows.find((r) => String(r[categoryKey]) === cat && String(r[groupKey]) === group);
+      return m ? Number(m[valKey]) : 0;
+    }),
+  }));
+  return {
+    tooltip: { trigger: "axis", axisPointer: { type: "shadow" } },
+    legend: { type: "scroll", top: 0 },
+    grid: { top: 44, left: 160, right: 48, bottom: 24 },
+    xAxis: { type: "value" },
+    yAxis: { type: "category", data: yData },
+    series,
+  };
+}

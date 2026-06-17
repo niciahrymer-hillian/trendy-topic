@@ -170,6 +170,12 @@ DEWEY_SECTIONS: tuple[DeweyClass, ...] = (
         "tournament", "world cup", "formula 1", "grand prix",
     )),
     DeweyClass("641", "Cooking & food", ("cooking", "recipe", "food", "cuisine", "baking")),
+    DeweyClass("629", "Vehicles & transportation", (
+        "car", "cars", "automobile", "vehicle", "truck", "motorcycle", "bus",
+        "train", "trains", "railway", "railroad", "subway", "metro", "tram",
+        "bicycle", "scooter", "airplane", "aircraft", "airline", "transportation",
+        "transport", "transit", "traffic", "engine", "electric vehicle", "tesla",
+    )),
     DeweyClass("320", "Politics & law", ("politics", "law", "government", "policy", "legal")),
     DeweyClass("910", "Travel & geography", ("travel", "geography", "tourism", "trip")),
     DeweyClass("900", "History", ("history", "war", "ancient", "civilization")),

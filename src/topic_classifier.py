@@ -45,6 +45,7 @@ PROMPT_TOPIC_LABELS = {
     "finance_money": "Finance & Money",
     "philosophy_religion": "Philosophy & Religion",
     "news_politics": "News & Politics",
+    "transportation": "Transportation",
 }
 
 # Broad category (from the project spec taxonomy) for each prompt_topic code.
@@ -68,6 +69,7 @@ PROMPT_TOPIC_CATEGORY = {
     "finance_money": "Finance & Money",
     "philosophy_religion": "Society & Culture",
     "news_politics": "Society & Culture",
+    "transportation": "Transportation & Auto",
 }
 
 UNKNOWN_LABEL = "Other / unclear"
@@ -195,6 +197,20 @@ TOPIC_CODE_KEYWORDS: list[tuple[str, list[str]]] = [
         "business letter", "memo", "agenda", "contract",
         "邮件", "会议", "客户", "合同", "メール", "会議", "courriel",
         "réunion", "correo", "reunión", "reunião", "письмо", "встреч", "договор",
+    ]),
+    ("transportation", [
+        "car", "cars", "automobile", "vehicle", "truck", "motorcycle", "bus",
+        "train", "trains", "railway", "railroad", "subway", "metro", "tram",
+        "bicycle", "bike", "scooter", "airplane", "aircraft", "airline",
+        "transportation", "transport", "transit", "commute", "traffic",
+        "engine", "ev", "electric vehicle", "tesla",
+        "汽车", "火车", "地铁", "公交", "自行车", "飞机", "交通", "高铁",
+        "車", "電車", "新幹線", "地下鉄", "バス", "自転車", "交通機関",
+        "voiture", "train", "métro", "vélo", "avion", "transport",
+        "coche", "carro", "tren", "metro", "avión", "transporte", "ônibus",
+        "trem", "metrô", "bicicleta", "avião",
+        "машин", "автомоб", "поезд", "метро", "велосипед", "самолёт",
+        "транспорт", "электромоб",
     ]),
     ("travel_local_help", [
         "travel", "trip", "hotel", "flight", "visa", "tourist", "itinerary",
