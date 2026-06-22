@@ -566,3 +566,23 @@ def test_extract_without_groq_key_returns_503(monkeypatch):
     resp = client.post("/api/extract")
     assert resp.status_code == 503
     assert "GROQ_API_KEY" in resp.json()["detail"]
+
+
+# ---------------------------------------------------------------------------
+# Audio fallback: with no ELEVENLABS_API_KEY (stripped by conftest), the demo
+# still gets a pre-recorded MP3 instead of a 503/502.
+# ---------------------------------------------------------------------------
+
+def test_voice_audio_serves_prerecorded_fallback_without_key():
+    resp = client.post("/api/voice/audio", params={"country": "Japan"})
+    assert resp.status_code == 200
+    assert resp.headers["content-type"] == "audio/mpeg"
+    assert resp.headers.get("x-audio-fallback") == "prerecorded"
+    assert len(resp.content) > 0
+
+
+def test_tts_serves_prerecorded_fallback_without_key():
+    resp = client.post("/api/tts", params={"text": "hello demo"})
+    assert resp.status_code == 200
+    assert resp.headers.get("x-audio-fallback") == "prerecorded"
+    assert len(resp.content) > 0

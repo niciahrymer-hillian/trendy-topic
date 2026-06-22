@@ -65,3 +65,12 @@ def test_both_engines_failing_raises(monkeypatch):
     monkeypatch.setattr(translator, "_translate_argos", _boom)
     with pytest.raises(RuntimeError):
         translator.translate_from_english("hello", "French", provider="deep_translator")
+
+
+# --- Groq/cloud failures fall back to the offline chain (demo resilience) ------
+
+def test_groq_failure_falls_back_to_offline_chain(monkeypatch):
+    # No GROQ_API_KEY in the demo -> Groq raises; the offline deep chain should answer.
+    monkeypatch.setattr(translator, "_translate_groq", _boom)
+    monkeypatch.setattr(translator, "_translate_deep", lambda t, tgt, src=None: "OFFLINE")
+    assert translator.translate_from_english("hello", "Spanish", provider="groq") == "OFFLINE"
