@@ -147,9 +147,13 @@ def _translate_google(text: str, target_language: str, source_language: str | No
 
 # --- Public API ---------------------------------------------------------------
 
-def _translate(text: str, target_language: str, source_language: str | None,
-               provider: str | None, client) -> str:
-    provider = (provider or _default_provider()).strip().lower()
+# Cloud/LLM providers need a key; if that's missing (e.g. in the demo) we fall back
+# to the offline deep->argos chain so translation keeps working instead of 503-ing.
+_FALLBACK_ELIGIBLE = {"groq", "google_cloud_translate"}
+
+
+def _dispatch(text: str, target_language: str, source_language: str | None,
+              provider: str, client) -> str:
     if provider == "deep_translator":
         return _translate_deep_then_argos(text, target_language, source_language)
     if provider == "argos":
@@ -162,6 +166,22 @@ def _translate(text: str, target_language: str, source_language: str | None,
         f"Unsupported translation provider: {provider!r}. Use 'deep_translator', "
         "'argos', 'groq', or 'google_cloud_translate'."
     )
+
+
+def _translate(text: str, target_language: str, source_language: str | None,
+               provider: str | None, client) -> str:
+    provider = (provider or _default_provider()).strip().lower()
+    try:
+        return _dispatch(text, target_language, source_language, provider, client)
+    except Exception as err:
+        # Only cloud/LLM providers fall back; an unsupported provider (ValueError) or a
+        # failed offline chain still propagates so callers see the real error.
+        if provider not in _FALLBACK_ELIGIBLE:
+            raise
+        logger.warning(
+            "%s translation failed (%s); falling back to offline deep->argos.", provider, err
+        )
+        return _translate_deep_then_argos(text, target_language, source_language)
 
 
 def translate_to_english(text: str, source_language: str, provider: str | None = None, client=None) -> str:

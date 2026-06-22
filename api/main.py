@@ -53,6 +53,20 @@ _AUDIO_DIR = Path(__file__).resolve().parents[1] / "assets" / "audio"
 _AUDIO_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/audio", StaticFiles(directory=str(_AUDIO_DIR)), name="audio")
 
+
+def _fallback_audio() -> Response | None:
+    """A pre-recorded MP3 so the demo always has audio when ElevenLabs is unavailable
+    (no API key, or synthesis fails). Returns the most recent brief_*.mp3, or None if
+    none exist. The X-Audio-Fallback header marks it as canned, not freshly synthesized."""
+    clips = sorted(_AUDIO_DIR.glob("brief_*.mp3"), key=lambda p: p.stat().st_mtime, reverse=True)
+    if not clips:
+        return None
+    return Response(
+        content=clips[0].read_bytes(),
+        media_type="audio/mpeg",
+        headers={"X-Audio-Fallback": "prerecorded"},
+    )
+
 # The Vite dev server runs on a different origin; allow it during development.
 app.add_middleware(
     CORSMiddleware,
@@ -387,47 +401,6 @@ def translate_country(country: str) -> dict:
         "local_text": local_text,
         "note": note,
     }
-
-
-@app.post("/api/voice-brief")
-def voice_brief(
-    country: str | None = None,
-    topic: str | None = None,
-    language: str | None = None,
-    briefing_language: str = "English",
-    voice_id: str | None = None,
-) -> dict:
-    """Build a voice briefing script, generate audio via ElevenLabs (or mock),
-    save to assets/audio, and optionally persist metadata to the DB."""
-    df = _df()
-    result = vb.run_voice_brief(
-        df,
-        country=country or None,
-        topic=topic or None,
-        language_filter=language or None,
-        briefing_language=briefing_language,
-        voice_id=voice_id or None,
-    )
-
-    if os.getenv("DATABASE_URL"):
-        try:
-            engine = db_mod.get_engine()
-            brief_id = db_mod.store_voice_brief(
-                engine,
-                country_name=country,
-                topic_category=topic,
-                language_code=language,
-                summary_text=result["script"],
-                audio_file_path=result["audio_filename"],
-                elevenlabs_voice_id=result["voice_id"],
-            )
-            result["voice_brief_id"] = brief_id
-        except Exception:
-            result["voice_brief_id"] = None
-    else:
-        result["voice_brief_id"] = None
-
-    return result
 
 
 @app.get("/api/voice-briefs")
@@ -969,6 +942,9 @@ def voice_audio(country: str | None = None, topic: str | None = None, language: 
     from src import db, voice_briefing as vb
 
     if not os.getenv("ELEVENLABS_API_KEY"):
+        fallback = _fallback_audio()
+        if fallback is not None:
+            return fallback
         raise HTTPException(status_code=503, detail="ELEVENLABS_API_KEY is not configured.")
     try:
         script = vb.build_script(_df(), country=country, topic=topic)
@@ -986,6 +962,9 @@ def voice_audio(country: str | None = None, topic: str | None = None, language: 
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
+        fallback = _fallback_audio()
+        if fallback is not None:
+            return fallback
         raise HTTPException(status_code=502, detail=f"Voice synthesis failed: {e}")
 
     audio_dir = Path(__file__).resolve().parents[1] / "assets" / "audio"
@@ -1013,6 +992,9 @@ def tts(text: str = Query(..., min_length=1)):
     the voice briefing). Text is capped at the safe length used for voicing.
     """
     if not os.getenv("ELEVENLABS_API_KEY"):
+        fallback = _fallback_audio()
+        if fallback is not None:
+            return fallback
         raise HTTPException(status_code=503, detail="ELEVENLABS_API_KEY is not configured.")
     from src import voice_briefing as vb
 
@@ -1021,5 +1003,8 @@ def tts(text: str = Query(..., min_length=1)):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
+        fallback = _fallback_audio()
+        if fallback is not None:
+            return fallback
         raise HTTPException(status_code=502, detail=f"Voice synthesis failed: {e}")
     return Response(content=audio, media_type="audio/mpeg")

@@ -1,751 +1,240 @@
-# Global AI Conversation Analytics Platform
-## What the World Asks AI
+<h1 align="center">🌍 Trendy Topic</h1>
+<p align="center"><b>What the World Asks AI</b><br/>
+An interactive analytics platform that turns millions of global AI conversations into country, language, topic, sentiment, and trend insights.</p>
 
-**Capstone Type:** Data Engineering + NLP + LLM Analytics + Interactive Dashboard  
-**Project Vision:** Build an interactive analytics platform that analyzes over 3 million global AI conversations to uncover what people around the world are asking, how interests differ by geography and language, and what trends emerge over time.
+<p align="center">
+  <img alt="Python" src="https://img.shields.io/badge/Python-3.14-3776AB?logo=python&logoColor=white">
+  <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white">
+  <img alt="React" src="https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black">
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white">
+  <img alt="Vite" src="https://img.shields.io/badge/Vite-5-646CFF?logo=vite&logoColor=white">
+  <img alt="ECharts" src="https://img.shields.io/badge/Apache%20ECharts-AA344D?logo=apacheecharts&logoColor=white">
+  <img alt="PostgreSQL" src="https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white">
+  <img alt="Pandas" src="https://img.shields.io/badge/Pandas-150458?logo=pandas&logoColor=white">
+  <img alt="Groq" src="https://img.shields.io/badge/Groq-LLM-F55036?logo=groq&logoColor=white">
+  <img alt="ElevenLabs" src="https://img.shields.io/badge/ElevenLabs-Voice-000000?logo=elevenlabs&logoColor=white">
+  <img alt="Docker" src="https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white">
+  <img alt="Tests" src="https://img.shields.io/badge/tests-238%20passing-2ea44f">
+</p>
 
-The platform combines data engineering, natural language processing, AI-powered classification, sentiment analysis, language translation, geospatial analytics, AI voice summaries, and interactive visualizations to transform raw conversation data into actionable insights.
-
-## Quick Start Button in VS Code
-
-This repo includes a one-click Run and Debug setup.
-
-Use the green Run and Debug button in VS Code and choose:
-
-`Start Trendy Topic Stack`
-
-What it does:
-
-- Starts the FastAPI backend on port `8000`
-- Starts the Vite frontend on port `5173`
-- Opens the dashboard in your browser automatically when the frontend is ready
-
-If the Python interpreter is not already selected in VS Code, point it to:
-
-`/Users/shocka/trendy-topic/.venv/bin/python`
-
-## Dewey Indexing for Full WildChat
-
-To stream prompts from Hugging Face WildChat and map each prompt into a Dewey class:
-
-```bash
-python -m src.dewey_prompt_index --dataset allenai/WildChat --split train --limit 1000000 --out-csv data/exports/wildchat_dewey_index.csv --replace-output
-```
-
-To write the same index rows into PostgreSQL (requires `DATABASE_URL`):
-
-```bash
-python -m src.dewey_prompt_index --dataset allenai/WildChat --split train --limit 1000000 --to-db --replace-db
-```
-
-If a long run is interrupted, resume from the latest checkpoint:
-
-```bash
-python -m src.dewey_prompt_index --dataset allenai/WildChat --split train --limit 1000000 --out-csv data/exports/wildchat_dewey_index.csv --resume --checkpoint-path data/exports/wildchat_dewey_index.checkpoint.json
-```
-
-Query indexed prompts by Dewey code and/or keyword:
-
-```bash
-curl "http://127.0.0.1:8000/api/dewey-prompts?dewey=000&q=python&limit=50"
-```
-
-Frontend browser for this endpoint: `/dewey-prompts`
+<p align="center">
+  <img src="assets/screenshots/dark/globe.png" alt="Trendy Topic — interactive 3D globe" width="100%">
+</p>
 
 ---
 
+## Overview
 
-## 1. Core Research Questions
+**Trendy Topic** is a Google-Trends-style platform for AI conversations. It ingests WildChat-style global chat data, cleans and redacts it, enriches each record with topic / sentiment / language / country metadata, stores the results, and serves them through a fast React dashboard with a 3D globe, comparison charts, an AI assistant, translation, and spoken voice briefings.
 
-The platform should answer:
+It is built as a real, end-to-end product: a **FastAPI** backend (36 endpoints over a Pandas analytics layer + optional PostgreSQL) and a **React + TypeScript + Vite** frontend (Apache ECharts visualizations and a WebGL globe).
 
-- What are the most common topics users discuss?
-- How do interests differ by country?
-- How do interests differ by language?
-- What questions are trending right now?
-- How do trends change over time?
-- What topics generate the strongest positive, neutral, or negative sentiment?
-- What surprising “wow factor” insights exist in the data?
-- What stories can be told from global AI usage patterns?
+### Research questions it answers
+
 - What are people asking AI most frequently across the world?
-- Which countries show the strongest interest in programming, entrepreneurship, education, finance, health, travel, or AI?
+- How do interests differ by **country** and by **language**?
+- Which topics generate the strongest positive, neutral, or negative **sentiment**?
+- What questions are **trending**, and how do trends shift over time?
+- Where is interest in programming, business, education, finance, health, or travel strongest?
 
 ---
 
-## 2. Target Users
+## Table of Contents
 
-### Researcher
-
-A researcher wants to understand how AI is being used around the world.
-
-**Goals**
-
-- Identify emerging trends
-- Compare countries and regions
-- Study language differences
-- Analyze sentiment and behavior
-- Discover global usage patterns
-
-### Consulting Firm
-
-A consulting firm wants market intelligence from global AI conversations.
-
-**Goals**
-
-- Discover consumer interests
-- Identify emerging industries
-- Track regional trends
-- Generate executive insights
-- Create client-ready market intelligence
-
-### Product Team
-
-A product manager wants to understand user needs.
-
-**Goals**
-
-- Discover common pain points
-- Identify feature opportunities
-- Understand frequently asked questions
-- Track changing demand
-- Prioritize product roadmap ideas
+- [Features](#features)
+- [Screenshots](#screenshots)
+- [Tech Stack](#tech-stack)
+- [Architecture](#architecture)
+- [Getting Started](#getting-started)
+- [Usage](#usage)
+- [Testing](#testing)
+- [Project Structure](#project-structure)
+- [Data &amp; Ethics](#data--ethics)
 
 ---
 
-## 3. Data Sources and Supported Formats
+## Features
 
-The system is designed to work with WildChat-style global AI conversation data and country-specific extracts.
+| | Feature | What it does |
+|---|---|---|
+| 🌐 | **Interactive Globe** | Spin a WebGL globe, click a country (or pick from the sidebar) to load its analytics. |
+| 📊 | **Global Overview** | Headline KPIs — conversations, countries, languages — plus most-discussed topics and sentiment mix. |
+| 🔍 | **Explore** | Filterable topic explorer across topics, languages, and sentiment. |
+| 💡 | **Insights** | Global Curiosity Index (most-asked questions) and a topic-by-country question heatmap. |
+| ⚖️ | **Compare Countries** | Side-by-side grouped bar charts comparing topics and behavior across countries. |
+| 🤖 | **AI Assistant** | One place to **Ask** the dataset, **Translate** a summary, hear a **Voice briefing**, and do a **Library lookup** — powered by Groq (with an automatic Claude fallback) and ElevenLabs voice. |
+| 📚 | **Dewey Classification** | Maps each prompt into a Dewey Decimal class, browsing what the world asks by knowledge domain. |
 
-Supported ingestion formats:
+**Resilience built in:** translation degrades gracefully from the cloud LLM to a free Google endpoint to a fully offline engine, and voice briefings fall back to a pre-recorded MP3 when no ElevenLabs key is present — so the demo always works, with or without API keys.
 
-- CSV
-- JSON
-- Parquet
+---
 
-Large source files should **not** be committed to GitHub. The `.gitignore` excludes raw datasets and large exports.
+## Screenshots
 
-Example data inputs:
+<table>
+  <tr>
+    <td width="50%"><b>Global Overview</b><br/><img src="assets/screenshots/dark/overview.png" alt="Global Overview"></td>
+    <td width="50%"><b>Insights — Curiosity Index &amp; Heatmap</b><br/><img src="assets/screenshots/dark/insights.png" alt="Insights"></td>
+  </tr>
+  <tr>
+    <td width="50%"><b>Compare Countries</b><br/><img src="assets/screenshots/dark/compare.png" alt="Compare Countries"></td>
+    <td width="50%"><b>Explore Topics</b><br/><img src="assets/screenshots/dark/explore.png" alt="Explore"></td>
+  </tr>
+  <tr>
+    <td width="50%"><b>AI Assistant</b><br/><img src="assets/screenshots/dark/ai-assistant.png" alt="AI Assistant"></td>
+    <td width="50%"><b>Dewey Classification</b><br/><img src="assets/screenshots/dark/dewey-taxonomy.png" alt="Dewey Classification"></td>
+  </tr>
+</table>
+
+> Screenshots are dark mode; the app ships with a light/dark toggle (a matching light set lives in [`assets/screenshots/`](assets/screenshots/)).
+
+---
+
+## Tech Stack
+
+**Backend**
+- **FastAPI** + **Uvicorn** — 36-endpoint REST API
+- **Pandas** + **pyarrow** — analytics over the WildChat country CSV pack
+- **PostgreSQL** via **SQLAlchemy** + **psycopg** — optional persistent storage (translations, voice briefs, Dewey index)
+- **vaderSentiment** / **langdetect** — sentiment + language detection
+- **deep-translator → Argos Translate → Google Cloud Translate** — layered translation
+- **Groq** (primary) with **Anthropic Claude** fallback — LLM for Ask, topic extraction, and synthesis
+- **ElevenLabs** — text-to-speech voice briefings
+- **scikit-learn** — country clustering / similarity
+
+**Frontend**
+- **React 18** + **TypeScript 5** + **Vite 5**
+- **Apache ECharts** (`echarts-for-react`) — charts and heatmaps
+- **react-globe.gl** + **three.js** — the WebGL globe
+- **react-router-dom** — routing
+
+**Tooling:** Docker + docker-compose, pytest (238 tests), VS Code one-click launch.
+
+---
+
+## Architecture
 
 ```text
-data/raw/wildchat_usa.csv
-data/raw/wildchat_canada.csv
-data/raw/wildchat_japan.parquet
-data/raw/wildchat_global_sample.json
+                         ┌────────────────────────────┐
+   Browser  ─────────►   │  React + Vite (port 5173)   │
+                         │  ECharts · WebGL globe      │
+                         └──────────────┬─────────────┘
+                              /api proxy │
+                         ┌──────────────▼─────────────┐
+                         │  FastAPI (port 8000)        │
+                         │  36 endpoints               │
+                         └──────────────┬─────────────┘
+              ┌──────────────┬──────────┴───────┬────────────────┐
+              ▼              ▼                  ▼                ▼
+        Pandas analytics  PostgreSQL      LLM (Groq/Claude)  ElevenLabs +
+        over WildChat     (optional)      + translation      MP3 fallback
+        CSV pack                           layer
+```
+
+The data pipeline: **ingest** (CSV/JSON/Parquet) → **clean & PII-redact** → **enrich** (topic, sentiment, language, country, time) → **translate** non-English summaries → **store** → **serve** to the dashboard.
+
+---
+
+## Getting Started
+
+### Prerequisites
+- Python 3.14 and Node 18+
+- (Optional) PostgreSQL, and API keys for Groq / Anthropic / ElevenLabs — the app runs without them thanks to built-in fallbacks.
+
+### First-time setup
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+cd frontend && npm install && cd ..
+cp .env.example .env   # add any keys you have; all are optional
+```
+
+### Run everything (one command)
+```bash
+./start.sh
+```
+This frees ports 8000/5173, starts the API + frontend, and opens the dashboard. In VS Code you can instead hit **Run and Debug → “Start Trendy Topic Stack.”**
+
+- Backend (FastAPI): http://localhost:8000
+- Frontend (Vite): **http://localhost:5173** ← open this
+
+### Run pieces manually
+```bash
+.venv/bin/uvicorn api.main:app --reload --port 8000   # backend only
+cd frontend && npm run dev                             # frontend only
 ```
 
 ---
 
-## 4. Data Pipeline
+## Usage
 
-### Stage 1: Ingestion
+A suggested walk-through:
 
-Load conversation data from source files.
+1. **Globe** — spin and click a country to load its analytics.
+2. **Overview** — read the headline counts and topic/sentiment mix.
+3. **Compare** — put two or more countries side by side.
+4. **Insights** — explore the Global Curiosity Index and question heatmap.
+5. **AI Assistant** — ask *“What topics are growing fastest in Brazil?”*, translate a summary, then generate a spoken country briefing.
+6. **Dewey Classification** — browse what the world asks by knowledge domain.
 
-Requirements:
-
-- Read CSV, JSON, and Parquet
-- Support country-level source files
-- Support global sample files
-- Validate required columns
-- Log rejected rows
-- Exclude large raw files from version control
-
-### Stage 2: Data Cleaning
-
-Normalize and standardize:
-
-- Countries
-- Languages
-- Timestamps
-- Message formatting
-- Missing values
-- Duplicate conversations
-- Unsafe or toxic records
-- Redacted records
-- Personally identifiable information
-
-### Stage 3: Data Enrichment
-
-Generate additional metadata:
-
-- Topic classification
-- Sentiment analysis
-- Language detection
-- Country mapping
-- Time period grouping
-- Question type detection
-- Curiosity ranking
-- Trending topic indicators
-
-### Stage 4: Translation Layer
-
-Non-English conversations should be translated into English before advanced analysis.
-
-Potential providers:
-
-- Google Cloud Translation API
-- DeepL API
-- Hugging Face translation models
-- LibreTranslate for open-source demos
-
-This enables consistent topic classification across all languages.
-
-Workflow:
-
-```text
-Original conversation
-        |
-        v
-Detect language
-        |
-        v
-Translate to English
-        |
-        v
-Run topic classification, sentiment, trend detection
-        |
-        v
-Translate summary back to selected local language
-```
-
-### Stage 5: Analytics Storage
-
-Use PostgreSQL for structured, queryable storage.
-
-Core tables:
-
-- countries
-- conversations
-- conversation_turns
-- translations
-- topic_classifications
-- sentiment_scores
-- trend_metrics
-- question_patterns
-- voice_briefs
-- ai_topic_extractions
-
-### Stage 6: Dashboard and AI Features
-
-Use Streamlit as the main dashboard because it works well with Python, Pandas, PostgreSQL, Plotly, maps, and fast capstone prototyping.
-
-Dashboard features:
-
-- Global overview
-- Interactive world map
-- Country analysis
-- Language analysis
-- Topic explorer
-- Sentiment dashboard
-- Trend timeline
-- Global curiosity index
-- Global question heatmap
-- Dynamic topic cloud
-- Ask the Dataset
-- Voice briefing studio
-
----
-
-## 5. Topic Classification
-
-Classify conversations into categories such as:
-
-- Technology
-- Education
-- Programming
-- Business
-- Finance
-- Health
-- Entertainment
-- Science
-- Travel
-- Lifestyle
-- Career and job search
-- Writing and communication
-- Legal and government
-- AI and automation
-- Politics and world events
-- Other / unclear
-
-Store classifications for dashboard filtering.
-
-Fields:
-
-```text
-topic_category
-topic_subcategory
-topic_confidence
-classification_method
-classification_model
-classified_at
+### Index full WildChat into Dewey classes
+```bash
+python -m src.dewey_prompt_index --dataset allenai/WildChat --split train \
+  --limit 1000000 --out-csv data/exports/wildchat_dewey_index.csv --replace-output
+# add --to-db --replace-db to write rows into PostgreSQL (needs DATABASE_URL)
 ```
 
 ---
 
-## 6. AI Topic Extraction
+## Testing
 
-Users should be able to select a subset of conversations and send them to an LLM for deeper analysis.
-
-Example prompt:
-
-```text
-Analyze these conversations and identify the five most important topics being discussed.
-
-Return:
-1. Top 5 topics
-2. Topic summaries
-3. Key insights
-4. Emerging trends
-5. Surprising patterns
-6. Suggested story angles for a research report
+```bash
+.venv/bin/python -m pytest -q     # 238 tests
+cd frontend && npm run build      # frontend typecheck + production build
 ```
 
-Generated outputs:
-
-- Top 5 topics
-- Topic summaries
-- Key insights
-- Emerging trends
-- “Wow factor” observations
-- Suggested narrative for presentation
-
-Safety rule:
-
-The LLM should receive cleaned summaries or safe excerpts, not raw sensitive conversation data.
+Tests isolate every external dependency (LLM, translation, voice, DB) so the suite runs fully offline and never bills an API.
 
 ---
 
-## 7. Sentiment Analysis
-
-The platform should analyze sentiment by:
-
-- Country
-- Language
-- Topic
-- Time period
-
-Sentiment labels:
-
-- Positive
-- Neutral
-- Negative
-
-Fields:
+## Project Structure
 
 ```text
-sentiment_label
-sentiment_score
-sentiment_method
-sentiment_model
-sentiment_analyzed_at
-```
-
-Use sentiment to answer:
-
-- Which topics create the most positive conversation?
-- Which topics show user stress, confusion, or frustration?
-- Which countries have the highest negative sentiment for job search, finance, or health questions?
-- How does sentiment change over time?
-
----
-
-## 8. Analytics Dashboard
-
-### Page 1: Global Overview
-
-Display:
-
-- Total conversations analyzed
-- Total countries represented
-- Total languages represented
-- Most discussed topics
-- Trending topics
-- Top questions globally
-- Positive/neutral/negative sentiment summary
-- Data quality and safety metrics
-
-### Page 2: Interactive World Map
-
-Features:
-
-- Country-level interaction
-- Hover effects
-- Clickable countries
-- Color intensity based on conversation volume, topic share, or sentiment
-- Clicking a country updates all dashboard components
-- Country summary tooltip
-
-### Page 3: Country Analysis
-
-Display:
-
-- Top topics
-- Topic frequency
-- Sentiment distribution
-- Common questions
-- Conversation volume
-- Language distribution
-- Top emerging trends
-- AI-generated country insight
-
-### Page 4: Language Analysis
-
-Display:
-
-- Percentage of conversations by language
-- Most common topics by language
-- Cross-language topic comparisons
-- Translation coverage
-- Language-specific sentiment patterns
-
-### Page 5: Topic Explorer
-
-Display:
-
-- Most discussed topics
-- Topic growth trends
-- Topic comparisons
-- Related topics
-- Sample safe summaries
-- Topic-over-time chart
-- Topic-by-country heatmap
-
-### Page 6: Sentiment Dashboard
-
-Analyze positive, neutral, and negative sentiment by:
-
-- Country
-- Language
-- Topic
-- Time period
-
-Show:
-
-- Sentiment distribution chart
-- Most positive topics
-- Most negative topics
-- Sentiment trend line
-- Sentiment by country map
-
-### Page 7: Translation Lab
-
-Features:
-
-- Select a country and conversation summary
-- Show original language
-- Translate to English
-- Translate from English into local language
-- Save translation in PostgreSQL
-- Compare original and translated summaries
-
-### Page 8: Voice Briefing Studio
-
-Use ElevenLabs to generate AI voice summaries.
-
-Features:
-
-- Select a country, language, or topic
-- Generate a safe briefing script
-- Convert text to speech using ElevenLabs
-- Play audio inside the dashboard
-- Store audio metadata in PostgreSQL
-
-Best voice use cases:
-
-- Country briefing
-- Global weekly trend report
-- Topic explanation
-- Accessibility narration
-
-### Page 9: Wow Factor Insights
-
-Features:
-
-- Global Curiosity Index
-- Trend Timeline
-- Global Question Heatmap
-- Dynamic Topic Cloud
-- Surprising insight cards
-- AI-generated story angles
-
-### Page 10: Ask the Dataset
-
-Natural-language analytics using aggregated data.
-
-Example questions:
-
-- What are the top questions asked in Germany?
-- What topics are growing fastest in Brazil?
-- What do French users ask about AI?
-- Which countries discuss programming the most?
-- Which topics have the most negative sentiment?
-
-Safety rule:
-
-Ask the Dataset should answer from aggregated metrics and safe summaries, not raw private conversations.
-
----
-
-## 9. Wow Factor Features
-
-### Global Curiosity Index
-
-Ranks the most frequently asked questions around the world.
-
-Example rankings:
-
-- How do I learn programming?
-- How do I make money online?
-- How does AI work?
-- How do I write a resume?
-- How can I improve my English?
-
-Display rankings:
-
-- Globally
-- By country
-- By language
-- By topic
-
-### Trend Timeline
-
-Shows how topics rise and fall over time.
-
-Example trend lines:
-
-- AI
-- Elections
-- Cryptocurrency
-- Job searches
-- Programming
-- Entrepreneurship
-- Education
-
-### Global Question Heatmap
-
-Visualize where specific topics are most popular.
-
-Examples:
-
-- Programming questions by country
-- Entrepreneurship questions by country
-- Education questions by country
-- Health questions by country
-- Finance questions by country
-
-### Dynamic Topic Cloud
-
-Interactive word cloud where:
-
-- Larger words indicate higher frequency
-- Selecting a country updates the cloud
-- Selecting a language updates the cloud
-- Hovering reveals statistics
-- Clicking a term filters dashboard views
-
-### Ask the Dataset
-
-Natural-language analytics for business/research users.
-
-Example:
-
-> “What topics are growing fastest in Brazil?”
-
-Expected response:
-
-> “In the current dataset, Brazil shows increasing activity in programming, English translation, job search, and entrepreneurship. Programming has the largest month-over-month growth among classified topics.”
-
----
-
-## 10. Recommended Visualizations
-
-The dashboard should include:
-
-- Interactive world map
-- Topic frequency bar charts
-- Trend line charts
-- Sentiment distributions
-- Word clouds
-- Treemaps
-- Heatmaps
-- Country comparison charts
-- Language share charts
-- KPI cards
-- Searchable data tables
-- Drill-down detail panels
-
-Recommended Python libraries:
-
-- Plotly Express for interactive charts
-- PyDeck for advanced maps
-- WordCloud for topic clouds
-- Pandas for aggregations
-- Streamlit for filters and layout
-
----
-
-## 11. PostgreSQL Schema Overview
-
-Tables:
-
-```text
-countries
-conversations
-conversation_turns
-translations
-topic_classifications
-sentiment_scores
-trend_metrics
-question_patterns
-voice_briefs
-ai_topic_extractions
-```
-
-Each table should support dashboard performance, filtering, and safe analytics.
-
----
-
-## 12. Project Folder Structure
-
-```text
-global-ai-conversation-analytics/
-│
-├── README.md
-├── requirements.txt
-├── .env.example
-├── .gitignore
-│
-├── data/
-│   ├── raw/
-│   ├── processed/
-│   └── exports/
-│
-├── sql/
-│   ├── 01_create_tables.sql
-│   ├── 02_indexes.sql
-│   └── 03_seed_countries.sql
-│
-├── src/
-│   ├── config.py
-│   ├── db.py
-│   ├── ingest.py
-│   ├── clean_data.py
-│   ├── enrich.py
-│   ├── language_detection.py
-│   ├── translator.py
-│   ├── topic_classifier.py
-│   ├── sentiment.py
-│   ├── trend_metrics.py
-│   ├── ai_topic_extraction.py
-│   ├── voice_briefing.py
-│   └── ask_dataset.py
-│
-├── dashboard/
-│   ├── app.py
-│   ├── pages/
-│   │   ├── 1_Global_Overview.py
-│   │   ├── 2_World_Map.py
-│   │   ├── 3_Country_Analysis.py
-│   │   ├── 4_Language_Analysis.py
-│   │   ├── 5_Topic_Explorer.py
-│   │   ├── 6_Sentiment_Dashboard.py
-│   │   ├── 7_Translation_Lab.py
-│   │   ├── 8_Voice_Briefing_Studio.py
-│   │   ├── 9_Wow_Factor_Insights.py
-│   │   └── 10_Ask_The_Dataset.py
-│   └── components/
-│
-├── tests/
-│   ├── test_ingest.py
-│   ├── test_clean_data.py
-│   ├── test_topic_classifier.py
-│   ├── test_sentiment.py
-│   ├── test_translation.py
-│   └── test_metrics.py
-│
-└── docs/
-    ├── data_dictionary.md
-    ├── ethics_policy.md
-    ├── demo_script.md
-    └── capstone_pitch.md
+Trendy Topic/
+├── api/                  # FastAPI app (main.py — 36 endpoints)
+├── src/                  # Python analytics + AI layer
+│   ├── ingest.py · clean.py · analysis.py        # ETL + metrics
+│   ├── topic_classifier.py · sentiment.py        # enrichment
+│   ├── language_detector.py · translator.py      # language + translation
+│   ├── llm.py · ai_assistant.py · ask.py         # LLM (Groq/Claude) + Ask
+│   ├── ai_extraction.py · ai_topic_extraction.py # LLM topic extraction
+│   ├── voice_briefing.py                         # ElevenLabs briefings
+│   ├── dewey_taxonomy.py · dewey_prompt_index.py # Dewey classification
+│   └── db.py · data_access.py · geo.py           # storage + access
+├── frontend/             # React + TypeScript + Vite
+│   └── src/pages/        # Globe, Overview, Compare, Explore, Insights,
+│                         # AIAssistant, DeweyTaxonomy
+├── sql/                  # schema, indexes, country seed
+├── data/                 # WildChat country CSV pack (raw files gitignored)
+├── assets/               # icon, audio briefings, screenshots
+├── docs/                 # data dictionary, ethics policy, findings, demo script
+├── tests/                # 238 pytest tests
+├── Dockerfile · docker-compose.yml
+└── start.sh
 ```
 
 ---
 
-## 13. Portfolio Value
+## Data &amp; Ethics
 
-This project demonstrates:
+Trendy Topic is built around **WildChat**, a public corpus of real ChatGPT conversations. Privacy is enforced by design:
 
-- Data Engineering
-- ETL pipelines
-- Data cleaning
-- PostgreSQL database design
-- Pandas analytics
-- Natural Language Processing
-- Language detection
-- Translation API integration
-- Sentiment analysis
-- LLM integration
-- API development
-- Interactive dashboards
-- Geospatial analytics
-- Data visualization
-- AI voice integration
-- Product thinking
-- Storytelling with data
-- Research ethics and privacy protection
+- Raw conversation text is **never** sent to translation, voice, or LLM features — only aggregated metrics and PII-redacted summaries.
+- Toxic and unsafe records are excluded; large raw datasets are gitignored.
+- Data limitations are surfaced in the dashboard rather than hidden.
 
-The result is a Google Trends-style analytics platform for understanding how millions of people use AI across the world.
+The sample shipped here is starter-scale, not the full 3.2M-conversation corpus. See [`docs/ethics_policy.md`](docs/ethics_policy.md) and [`docs/findings.md`](docs/findings.md) for details.
 
 ---
 
-## 14. Definition of Done
-
-The project is complete when:
-
-- The system can ingest CSV, JSON, and Parquet data.
-- Large raw source files are excluded from GitHub.
-- Cleaned records are stored in PostgreSQL.
-- Countries, languages, timestamps, and missing values are normalized.
-- Data enrichment adds topic, sentiment, language, country, and time-period metadata.
-- Non-English conversations can be translated to English.
-- The dashboard shows global, country, language, topic, sentiment, and trend views.
-- The world map is interactive.
-- The Global Curiosity Index is visible.
-- The Trend Timeline is visible.
-- The Global Question Heatmap is visible.
-- The Dynamic Topic Cloud is visible.
-- Ask the Dataset answers natural-language questions using aggregated data.
-- ElevenLabs voice briefings work with safe summaries.
-- The final demo tells a clear story from raw data to insight.
-- The project includes README, Kanban cards, feature coverage matrix, SQL schema, and data dictionary.
-
----
-
-## 15. Suggested Demo Flow
-
-1. Open the Global Overview and show total conversations, countries, languages, and top topics.
-2. Open the Interactive World Map and click a country.
-3. Show Country Analysis for the selected country.
-4. Compare topics across languages.
-5. Open Topic Explorer and show trend growth.
-6. Open Sentiment Dashboard and explain positive/neutral/negative patterns.
-7. Show Global Curiosity Index.
-8. Show Global Question Heatmap.
-9. Open Dynamic Topic Cloud.
-10. Ask the Dataset a question like, “What topics are growing fastest in Brazil?”
-11. Translate a safe summary.
-12. Generate and play an ElevenLabs country briefing.
-13. End with privacy, ethics, and portfolio value.
-
----
-
-## 16. Team Build Recommendation
-
-For a capstone team, split work into lanes:
-
-- **Data Engineering:** ingestion, cleaning, PostgreSQL, Pandas metrics
-- **NLP/AI:** topic classification, sentiment, LLM topic extraction, Ask the Dataset
-- **Dashboard/UI:** Streamlit pages, charts, maps, filters, visual polish
-- **Voice/Translation:** translation layer, ElevenLabs integration, language support
-- **QA/Presentation:** tests, demo script, final story, documentation
+<p align="center"><sub>Capstone project · Data Engineering + NLP + LLM Analytics + Interactive Dashboard</sub></p>
