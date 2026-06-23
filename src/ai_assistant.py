@@ -28,10 +28,10 @@ from . import analysis as an, dewey_library_search as dls, llm
 SYSTEM_SYNTH = (
     "You are the analytics assistant for 'Trendy Topic', a dashboard about what people "
     "ask AI around the world. Answer the user's question using ONLY the JSON data gathered "
-    "for you — never invent numbers. Be concise (2-4 sentences), cite the specific figures "
-    "you used, and directly answer what was asked (don't just list tables). If a comparison "
-    "or resource list was gathered, summarise the takeaway. If the data can't answer, say so "
-    "and suggest a question it can answer."
+    "for you — never invent numbers. Answer in 1-2 short sentences only, cite the specific "
+    "figures you used, and directly answer what was asked (don't just list tables). If a "
+    "comparison or resource list was gathered, summarise the takeaway in one sentence. If the "
+    "data can't answer, say so and suggest a question it can answer."
 )
 
 SYSTEM_PLAN = (

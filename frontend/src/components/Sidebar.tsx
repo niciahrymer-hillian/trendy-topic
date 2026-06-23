@@ -10,7 +10,7 @@ const NAV = [
   { to: "/compare", label: "Compare Countries" },
   { to: "/explore", label: "Explore" },
   { to: "/insights", label: "Insights" },
-  { to: "/ai-assistant", label: "AI Assistant" },
+  { to: "/ai-assistant", label: "Dewey (AI Assistant)" },
   { to: "/dewey-taxonomy", label: "Dewey Classification" },
 ];
 

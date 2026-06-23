@@ -124,17 +124,17 @@ export default function AIAssistant() {
   const { set } = useJump();
 
   useEffect(() => {
-    set("AI Assistant", TABS.map((t) => ({ label: t.label, active: t.id === tab, onClick: () => setTab(t.id) })));
+    set("Dewey (AI Assistant)", TABS.map((t) => ({ label: t.label, active: t.id === tab, onClick: () => setTab(t.id) })));
   }, [tab, set]);
 
   return (
     <SpeakingContext.Provider value={setSpeaking}>
       <div className="assistant-hero">
-        <PageHeader
-          title="AI Assistant"
-          subtitle="Ask, translate, hear a spoken briefing, and look up library resources — all in one place. The assistant speaks with the ElevenLabs voice."
-        />
         <RobotMascot speaking={speaking} />
+        <PageHeader
+          title="Dewey (AI Assistant)"
+          subtitle="Hello, I'm Dewey, The AI Assistant. Ask, translate, hear a spoken briefing, and look up library resources — all in one place."
+        />
       </div>
       <div className="controls" role="tablist">
         {TABS.map((t) => (
