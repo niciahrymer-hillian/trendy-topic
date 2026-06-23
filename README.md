@@ -141,14 +141,6 @@ The data pipeline: **ingest** (CSV/JSON/Parquet) → **clean & PII-redact** → 
 - Python 3.14 and Node 18+
 - (Optional) PostgreSQL, and API keys for Groq / Anthropic / ElevenLabs — the app runs without them thanks to built-in fallbacks.
 
-### First-time setup
-```bash
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
-cd frontend && npm install && cd ..
-cp .env.example .env   # add any keys you have; all are optional
-```
-
 ### Run everything (one command)
 ```bash
 ./start.sh
