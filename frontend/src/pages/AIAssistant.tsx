@@ -132,8 +132,8 @@ export default function AIAssistant() {
       <div className="assistant-hero">
         <RobotMascot speaking={speaking} />
         <PageHeader
-          title="Dewey (AI Assistant)"
-          subtitle="Hello, I'm Dewey, The AI Assistant. Ask, translate, hear a spoken briefing, and look up library resources — all in one place."
+          title="Hello, I'm Dewey, The AI Assistant."
+          subtitle="Ask, translate, hear a spoken briefing, and look up library resources — all in one place."
         />
       </div>
       <div className="controls" role="tablist">
