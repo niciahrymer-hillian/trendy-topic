@@ -375,7 +375,7 @@ button.primary {
 .spoken-word.active { background: var(--accent); color: #04121f; padding: 0 2px; }
 
 /* AI Assistant header + robot mascot. */
-.assistant-hero { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+.assistant-hero { display: flex; justify-content: flex-start; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
 .assistant-hero .page-header { margin-bottom: 12px; }
 
 .robot {

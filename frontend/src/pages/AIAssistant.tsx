@@ -130,11 +130,11 @@ export default function AIAssistant() {
   return (
     <SpeakingContext.Provider value={setSpeaking}>
       <div className="assistant-hero">
+        <RobotMascot speaking={speaking} />
         <PageHeader
-          title="AI Assistant"
+          title="Hello, my name is Dewey AI Assistant"
           subtitle="Ask, translate, hear a spoken briefing, and look up library resources — all in one place. The assistant speaks with the ElevenLabs voice."
         />
-        <RobotMascot speaking={speaking} />
       </div>
       <div className="controls" role="tablist">
         {TABS.map((t) => (
